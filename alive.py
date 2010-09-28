@@ -1,3 +1,6 @@
+"""
+This script takes as input a URL and checks with wget if it can be accessed.
+"""
 
 import subprocess
 import sys
@@ -9,7 +12,7 @@ import smtplib
 from email.mime.text import MIMEText
 
 PARSER = OptionParser(usage="%prog filename", description="""
-This script takes as input a URL and checks with wget if 
+This script takes as input a URL and checks with wget if
 it can be accessed.
 """)
 
@@ -31,15 +34,19 @@ if not CONFIG.has_section( OPTIONS.URL ):
 
 try:
     PREV_STATUS = CONFIG.getboolean( OPTIONS.URL, "Down" )
-except:
+except ValueError:
+    PREV_STATUS = False
+except ConfigParser.NoOptionError:
     PREV_STATUS = False
 
-wget = subprocess.Popen( args=["wget", "--quiet", "--timeout=20", "--tries=3", "--spider", OPTIONS.URL] )
+WGET = subprocess.Popen( args=["wget", "--quiet", "--timeout=20", "--tries=3", "--spider", OPTIONS.URL] )
 
 def write( text ):
-    if OPTIONS.VERBOSE: print text
+    """Writes the string only if verbose mode is enabled"""
+    if OPTIONS.VERBOSE:
+        print text
 
-if wget.wait():
+if WGET.wait():
     write( "%s Down" % OPTIONS.URL)
 
     if PREV_STATUS:
@@ -49,21 +56,21 @@ if wget.wait():
 
     if not PREV_STATUS and OPTIONS.TO:
         write( "Mailing...")
-        msg = MIMEText("Site is down at %s" % datetime.datetime.now().ctime() )
-        msg['Subject'] = "%s Down" % OPTIONS.URL
+        MSG = MIMEText("Site is down at %s" % datetime.datetime.now().ctime() )
+        MSG['Subject'] = "%s Down" % OPTIONS.URL
         if OPTIONS.FROM:
-            msg['From'] = OPTIONS.FROM
-        msg['To'] = OPTIONS.TO
-        s = smtplib.SMTP()
+            MSG['From'] = OPTIONS.FROM
+        MSG['To'] = OPTIONS.TO
+        S = smtplib.SMTP()
         if OPTIONS.VERBOSE:
-            s.set_debuglevel(True)
-        s.connect()
-        s.sendmail(OPTIONS.FROM, [OPTIONS.TO], msg.as_string())
-        s.quit()
+            S.set_debuglevel(True)
+        S.connect()
+        S.sendmail(OPTIONS.FROM, [OPTIONS.TO], MSG.as_string())
+        S.quit()
 else:
     write( "%s Up" % OPTIONS.URL)
     CONFIG.set( OPTIONS.URL, "Down", "no" )
 
 # Write the configuration file
-with open('test.cfg', 'wb') as configfile:
+with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
     CONFIG.write(configfile)
