@@ -60,8 +60,6 @@ for URL in URLS:
         if PREV_STATUS:
             write( "State already known" )
 
-        CONFIG.set( URL, "Down", "yes" )
-
         if not PREV_STATUS and OPTIONS.TO:
             write( "Mailing...")
             MSG = MIMEText("Site is down at %s" % datetime.datetime.now().ctime() )
@@ -72,9 +70,16 @@ for URL in URLS:
             S = smtplib.SMTP()
             if OPTIONS.VERBOSE:
                 S.set_debuglevel(True)
-            S.connect()
+            try:
+                S.connect()
+            except:
+                print "Could not send email, do you have an SMTP server running on localhost?"
+                continue
             S.sendmail(OPTIONS.FROM, [OPTIONS.TO], MSG.as_string())
             S.quit()
+
+        CONFIG.set( URL, "Down", "yes" )
+
     else:
         write( "Up\n" )
         CONFIG.set( URL, "Down", "no" )
