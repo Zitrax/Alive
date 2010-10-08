@@ -2,6 +2,8 @@
 This script takes as input a URL and checks with wget if it can be accessed.
 """
 
+# TODO: Write a main function instead of using globals
+
 import subprocess
 import sys
 from optparse import OptionParser
