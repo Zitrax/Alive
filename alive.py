@@ -3,8 +3,6 @@ This script takes as input a URL and checks with wget if it can be accessed,
 with mail notifications when the site goes up or down.
 """
 
-# TODO: Write a main function instead of using globals
-
 import subprocess
 import sys
 from optparse import OptionParser
@@ -14,32 +12,72 @@ import datetime
 import smtplib
 from email.mime.text import MIMEText
 
-PARSER = OptionParser(usage="%prog filename", description="""
-This script takes as input one or several URLs and checks with wget if
-they can be accessed.
-""")
+def parse_command_line_options():
+    """Will parse all options given on the command line and exit if required arguments are not given"""
 
-PARSER.add_option("-u", "--url", action="store", type="string", dest="URL", help="URL to try to retrieve (Required) You can write several URLs separated by space, but remember to quote the string.")
-PARSER.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print debug messages")
-PARSER.add_option("-f", "--from", action="store", type="string", dest="FROM", help="from email address")
-PARSER.add_option("-t", "--to", action="store", type="string", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
-PARSER.add_option("-c", "--config", action="store", type="string", dest="CONFIGFILE", default="alive.cfg", help="The configuration file")
-(OPTIONS, ARGS) = PARSER.parse_args()
+    global OPTIONS
 
-if not OPTIONS.URL:
-    PARSER.print_help()
-    sys.exit(1)
+    parser = OptionParser(usage="%prog filename", description=
+    """This script takes as input one or several URLs and checks with wget if
+    they can be accessed.
+    """)
 
-URLS = OPTIONS.URL.split()
+    parser.add_option("-u", "--url", dest="URL", help="URL to try to retrieve (Required) You can write several URLs separated by space, but remember to quote the string.")
+    parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print debug messages")
+    parser.add_option("-f", "--from", dest="FROM", help="from email address")
+    parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
+    parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file")
+    (OPTIONS, args) = parser.parse_args()
 
-CONFIG = ConfigParser.RawConfigParser()
-CONFIG.read( OPTIONS.CONFIGFILE )
+    if not OPTIONS.URL or len(args):
+        parser.print_help()
+        sys.exit(1)
 
 def write( text ):
     """Writes the string only if verbose mode is enabled"""
     if OPTIONS.VERBOSE:
         print text,
         sys.stdout.flush()
+
+def check_urls(config, urls):
+    """Will go through the url list and check if they are up"""
+
+    for url in urls:
+
+        if not config.has_section( url ):
+            config.add_section( url )
+
+        try:
+            down_earlier = config.getboolean( url, "Down" )
+        except ValueError:
+            down_earlier = False
+        except ConfigParser.NoOptionError:
+            down_earlier = False
+
+        wget = subprocess.Popen( args=["wget", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
+
+        write( "Trying %s... " % url )
+
+        if wget.wait():
+            write( "Down\n" )
+
+            if down_earlier:
+                write( "State already known" )
+
+            if not down_earlier and OPTIONS.TO:
+                if( not send_mail( "%s Down" % url, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
+                    continue
+
+            config.set( url, "Down", "yes" )
+
+        else:
+            write( "Up\n" )
+
+            if down_earlier and OPTIONS.TO:
+                if( not send_mail( "%s Up" % url, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
+                    continue
+
+            config.set( url, "Down", "no" )
 
 def send_mail(subject, body):
     """Send a mail using smtp server on localhost"""
@@ -61,43 +99,20 @@ def send_mail(subject, body):
     smtp.quit()
     return True
 
-for URL in URLS:
+def main():
+    """main"""
+ 
+    parse_command_line_options()
+    urls = OPTIONS.URL.split()
 
-    if not CONFIG.has_section( URL ):
-        CONFIG.add_section( URL )
+    config = ConfigParser.RawConfigParser()
+    config.read( OPTIONS.CONFIGFILE )
 
-    try:
-        PREV_STATUS = CONFIG.getboolean( URL, "Down" )
-    except ValueError:
-        PREV_STATUS = False
-    except ConfigParser.NoOptionError:
-        PREV_STATUS = False
+    check_urls(config, urls)
 
-    WGET = subprocess.Popen( args=["wget", "--quiet", "--timeout=20", "--tries=3", "--spider", URL] )
+    # Write the configuration file
+    with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
+        config.write(configfile)
 
-    write( "Trying %s... " % URL )
-
-    if WGET.wait():
-        write( "Down\n" )
-
-        if PREV_STATUS:
-            write( "State already known" )
-
-        if not PREV_STATUS and OPTIONS.TO:
-            if( not send_mail( "%s Down" % URL, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
-                continue
-
-        CONFIG.set( URL, "Down", "yes" )
-
-    else:
-        write( "Up\n" )
-
-        if PREV_STATUS and OPTIONS.TO:
-            if( not send_mail( "%s Up" % URL, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
-                continue
-
-        CONFIG.set( URL, "Down", "no" )
-
-# Write the configuration file
-with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
-    CONFIG.write(configfile)
+if __name__ == "__main__":
+    main()
