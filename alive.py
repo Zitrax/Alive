@@ -1,5 +1,6 @@
 """
-This script takes as input a URL and checks with wget if it can be accessed.
+This script takes as input a URL and checks with wget if it can be accessed,
+with mail notifications when the site goes up or down.
 """
 
 # TODO: Write a main function instead of using globals
