@@ -22,14 +22,16 @@ def parse_command_line_options():
     they can be accessed.
     """)
 
-    parser.add_option("-u", "--url", dest="URL", help="URL to try to retrieve (Required) You can write several URLs separated by space, but remember to quote the string.")
+    parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
     parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print debug messages")
     parser.add_option("-f", "--from", dest="FROM", help="from email address")
     parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
     parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
+    parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true", help="Test all existing URLs in the cfg file.")
+
     (OPTIONS, args) = parser.parse_args()
 
-    if not OPTIONS.URL or len(args):
+    if not (OPTIONS.URL or OPTIONS.KNOWN) or len(args):
         parser.print_help()
         sys.exit(1)
 
@@ -60,11 +62,12 @@ def check_urls(config, urls):
 
         res = wget.wait()
 
-        if res and res!=6:
-            write( "Down\n" )
+        if res and res != 6:
+            write( "Down" )
 
             if down_earlier:
-                write( "State already known" )
+                write( " (State already known)" )
+            write("\n")
 
             if not down_earlier and OPTIONS.TO:
                 if( not send_mail( "%s Down" % url, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
@@ -73,7 +76,11 @@ def check_urls(config, urls):
             config.set( url, "Down", "yes" )
 
         else:
-            write( "Up\n" )
+            write( "Up" )
+
+            if not down_earlier:
+                write( " (State already known)" )
+            write("\n")
 
             if down_earlier and OPTIONS.TO:
                 if( not send_mail( "%s Up" % url, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
@@ -105,10 +112,16 @@ def main():
     """main"""
  
     parse_command_line_options()
-    urls = OPTIONS.URL.split()
+
+    urls = []
+    if OPTIONS.URL:
+        urls += OPTIONS.URL.split()
 
     config = ConfigParser.RawConfigParser()
     config.read( OPTIONS.CONFIGFILE )
+
+    if OPTIONS.KNOWN:
+        urls += config.sections()
 
     check_urls(config, urls)
 
