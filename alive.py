@@ -54,11 +54,13 @@ def check_urls(config, urls):
         except ConfigParser.NoOptionError:
             down_earlier = False
 
-        wget = subprocess.Popen( args=["wget", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
+        wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
 
         write( "Trying %s... " % url )
 
-        if wget.wait():
+        res = wget.wait()
+
+        if res and res!=6:
             write( "Down\n" )
 
             if down_earlier:
