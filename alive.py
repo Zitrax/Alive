@@ -26,7 +26,7 @@ def parse_command_line_options():
     parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print debug messages")
     parser.add_option("-f", "--from", dest="FROM", help="from email address")
     parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
-    parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file")
+    parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
     (OPTIONS, args) = parser.parse_args()
 
     if not OPTIONS.URL or len(args):
