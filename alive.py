@@ -13,6 +13,9 @@ import datetime
 import smtplib
 from email.mime.text import MIMEText
 
+sys.path.append("colorama")
+from colorama import Fore
+
 def parse_command_line_options():
     """Will parse all options given on the command line and exit if required arguments are not given"""
 
@@ -64,7 +67,7 @@ def check_urls(config, urls):
         res = wget.wait()
 
         if res and res != 6:
-            write( "%sDown" % ((30-len(url))*" "))
+            write( "%s%sDown%s" % (Fore.RED,(30-len(url))*" ",Fore.RESET))
 
             if down_earlier:
                 write( " (State already known)" )
@@ -77,7 +80,7 @@ def check_urls(config, urls):
             config.set( url, "Down", "yes" )
 
         else:
-            write( "%s  Up" % ((30-len(url))*" "))
+            write( "%s  %sUp%s" % (Fore.GREEN,(30-len(url))*" ",Fore.RESET))
 
             if not down_earlier:
                 write( " (State already known)" )
