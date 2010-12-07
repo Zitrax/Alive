@@ -64,7 +64,7 @@ def check_urls(config, urls):
         res = wget.wait()
 
         if res and res != 6:
-            write( "Down" )
+            write( "%sDown" % ((30-len(url))*" "))
 
             if down_earlier:
                 write( " (State already known)" )
@@ -77,7 +77,7 @@ def check_urls(config, urls):
             config.set( url, "Down", "yes" )
 
         else:
-            write( "Up" )
+            write( "%s  Up" % ((30-len(url))*" "))
 
             if not down_earlier:
                 write( " (State already known)" )
