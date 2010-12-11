@@ -103,23 +103,23 @@ def report( config, url, down, known_earlier, last_change, state_pos ):
     write( "%s%s%s%s%s" % (color, space, (state_pos-len(url))*" ", state, Fore.RESET))
 
     if known_earlier:
-        write( " (State already known" )
+        write( " ( State already known" )
         if last_change:
             write( "since %s" % time.ctime(last_change) )
-        else:
-            write( " (State changed" )
-        write(")\n")
+    else:
+        write( " ( State changed" )
+    write(")\n")
 
-        if known_earlier:
-            if OPTIONS.TO:
-                if( not send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
-                    return
-            config.set( url, "Time", int(time.time()) )
+    if not known_earlier:
+        if OPTIONS.TO:
+            if( not send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+                return
+        config.set( url, "Time", int(time.time()) )
 
-        if down:
-            config.set( url, "Down", "yes" )
-        else:
-            config.set( url, "Down", "no" )
+    if down:
+        config.set( url, "Down", "yes" )
+    else:
+        config.set( url, "Down", "no" )
 
 def send_mail(subject, body):
     """Send a mail using smtp server on localhost"""
