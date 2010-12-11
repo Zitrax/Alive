@@ -28,7 +28,7 @@ def parse_command_line_options():
     """)
 
     parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
-    parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print messages")
+    parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all prints")
     parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
     parser.add_option("-f", "--from", dest="FROM", help="from email address")
     parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
@@ -43,8 +43,8 @@ def parse_command_line_options():
         sys.exit(1)
 
 def write( text ):
-    """Writes the string only if verbose or debug mode is enabled"""
-    if OPTIONS.VERBOSE or OPTIONS.DEBUG:
+    """Writes the string only if not in quiet mode"""
+    if not OPTIONS.QUIET:
         print text,
         sys.stdout.flush()
 
