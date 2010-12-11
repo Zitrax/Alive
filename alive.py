@@ -34,10 +34,11 @@ def parse_command_line_options():
     parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
     parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
     parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true", help="Test all existing URLs in the cfg file.")
+    parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
 
     (OPTIONS, args) = parser.parse_args()
 
-    if not (OPTIONS.URL or OPTIONS.KNOWN) or len(args):
+    if not (OPTIONS.URL or OPTIONS.KNOWN or OPTIONS.LIST) or len(args):
         parser.print_help()
         sys.exit(1)
 
@@ -151,6 +152,15 @@ def main():
 
     config = ConfigParser.RawConfigParser()
     config.read( OPTIONS.CONFIGFILE )
+
+    if OPTIONS.LIST:
+        if len(config.sections()):
+            print "Known URLs in the config file '%s':\n" % OPTIONS.CONFIGFILE
+            for url in config.sections():
+                print url
+        else:
+            print "No URLs in the config file '%s':" % OPTIONS.CONFIGFILE
+        sys.exit(0)
 
     if OPTIONS.KNOWN:
         urls += config.sections()
