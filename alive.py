@@ -84,41 +84,41 @@ def check_urls(config, urls):
         res = wget.wait()
 
         if res and res != 6:
-            write( "%s%sDown%s" % (Fore.RED, (state_pos-len(url))*" ", Fore.RESET))
-
-            if down_earlier:
-                write( " (State already known" )
-                if last_change:
-                    write( "since %s" % time.ctime(last_change) )
-            else:
-                write( " (State changed" )
-            write(")\n")
-
-            if not down_earlier:
-                if OPTIONS.TO:
-                    if( not send_mail( "%s Down" % url, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
-                        continue
-                config.set( url, "Time", int(time.time()) )
-
-            config.set( url, "Down", "yes" )
-
+            report( config, url, True, down_earlier, last_change, state_pos )
         else:
-            write( "%s  %sUp%s" % (Fore.GREEN, (state_pos-len(url))*" ", Fore.RESET))
+            report( config, url, False, not down_earlier, last_change, state_pos )
 
-            if not down_earlier:
-                write( " (State already known" )
-                if last_change:
-                    write( "since %s" % time.ctime(last_change) )
-            else:
-                write( " (State changed" )
-            write(")\n")
+def report( config, url, down, known_earlier, last_change, state_pos ):
+    """Report the state and eventual change"""
 
-            if down_earlier:
-                if OPTIONS.TO:
-                    if( not send_mail( "%s Up" % url, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
-                        continue
-                config.set( url, "Time", int(time.time()) )
+    if down:
+        state = "down"
+        color = Fore.RED
+        space = ""
+    else:
+        state = "up"
+        color = Fore.GREEN
+        space = "  "
 
+    write( "%s%s%s%s%s" % (color, space, (state_pos-len(url))*" ", state, Fore.RESET))
+
+    if known_earlier:
+        write( " (State already known" )
+        if last_change:
+            write( "since %s" % time.ctime(last_change) )
+        else:
+            write( " (State changed" )
+        write(")\n")
+
+        if known_earlier:
+            if OPTIONS.TO:
+                if( not send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+                    return
+            config.set( url, "Time", int(time.time()) )
+
+        if down:
+            config.set( url, "Down", "yes" )
+        else:
             config.set( url, "Down", "no" )
 
 def send_mail(subject, body):
