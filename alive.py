@@ -70,9 +70,11 @@ def check_urls(config, urls):
         try:
             last_change = config.getint( url, "Time" )
         except ValueError:
-            last_change = 0
+            last_change = int(time.time())
+            config.set( url, "Time", last_change )
         except ConfigParser.NoOptionError:
-            last_change = 0
+            last_change = int(time.time())
+            config.set( url, "Time", last_change )
 
         wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
 
@@ -87,6 +89,8 @@ def check_urls(config, urls):
                 write( " (State already known" )
                 if last_change:
                     write( "since %s" % time.ctime(last_change) )
+            else:
+                write( " (State changed" )
             write(")\n")
 
             if not down_earlier:
@@ -104,6 +108,8 @@ def check_urls(config, urls):
                 write( " (State already known" )
                 if last_change:
                     write( "since %s" % time.ctime(last_change) )
+            else:
+                write( " (State changed" )
             write(")\n")
 
             if down_earlier:
