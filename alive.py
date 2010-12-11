@@ -9,6 +9,7 @@ import sys
 from optparse import OptionParser
 import ConfigParser
 import datetime
+import time
 
 import smtplib
 from email.mime.text import MIMEText
@@ -27,7 +28,8 @@ def parse_command_line_options():
     """)
 
     parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
-    parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print debug messages")
+    parser.add_option("-v", "--verbose", action="store_true", dest="VERBOSE", help="Print messages")
+    parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
     parser.add_option("-f", "--from", dest="FROM", help="from email address")
     parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
     parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
@@ -40,8 +42,8 @@ def parse_command_line_options():
         sys.exit(1)
 
 def write( text ):
-    """Writes the string only if verbose mode is enabled"""
-    if OPTIONS.VERBOSE:
+    """Writes the string only if verbose or debug mode is enabled"""
+    if OPTIONS.VERBOSE or OPTIONS.DEBUG:
         print text,
         sys.stdout.flush()
 
@@ -65,6 +67,13 @@ def check_urls(config, urls):
         except ConfigParser.NoOptionError:
             down_earlier = False
 
+        try:
+            last_change = config.getint( url, "Time" )
+        except ValueError:
+            last_change = 0
+        except ConfigParser.NoOptionError:
+            last_change = 0
+
         wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
 
         write( "Trying %s... " % url )
@@ -75,12 +84,16 @@ def check_urls(config, urls):
             write( "%s%sDown%s" % (Fore.RED, (state_pos-len(url))*" ", Fore.RESET))
 
             if down_earlier:
-                write( " (State already known)" )
-            write("\n")
+                write( " (State already known" )
+                if last_change:
+                    write( "since %s" % time.ctime(last_change) )
+            write(")\n")
 
-            if not down_earlier and OPTIONS.TO:
-                if( not send_mail( "%s Down" % url, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
-                    continue
+            if not down_earlier:
+                if OPTIONS.TO:
+                    if( not send_mail( "%s Down" % url, "Site is down at %s" % datetime.datetime.now().ctime() ) ):
+                        continue
+                config.set( url, "Time", int(time.time()) )
 
             config.set( url, "Down", "yes" )
 
@@ -88,12 +101,16 @@ def check_urls(config, urls):
             write( "%s  %sUp%s" % (Fore.GREEN, (state_pos-len(url))*" ", Fore.RESET))
 
             if not down_earlier:
-                write( " (State already known)" )
-            write("\n")
+                write( " (State already known" )
+                if last_change:
+                    write( "since %s" % time.ctime(last_change) )
+            write(")\n")
 
-            if down_earlier and OPTIONS.TO:
-                if( not send_mail( "%s Up" % url, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
-                    continue
+            if down_earlier:
+                if OPTIONS.TO:
+                    if( not send_mail( "%s Up" % url, "Site is up at %s" % datetime.datetime.now().ctime() ) ):
+                        continue
+                config.set( url, "Time", int(time.time()) )
 
             config.set( url, "Down", "no" )
 
@@ -106,7 +123,7 @@ def send_mail(subject, body):
         msg['From'] = OPTIONS.FROM
     msg['To'] = OPTIONS.TO
     smtp = smtplib.SMTP()
-    if OPTIONS.VERBOSE:
+    if OPTIONS.DEBUG:
         smtp.set_debuglevel(True)
     try:
         smtp.connect()
