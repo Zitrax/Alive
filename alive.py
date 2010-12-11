@@ -21,7 +21,7 @@ def parse_command_line_options():
 
     global OPTIONS
 
-    parser = OptionParser(usage="%prog filename", description=
+    parser = OptionParser(usage="%prog [options]", description=
     """This script takes as input one or several URLs and checks with wget if
     they can be accessed.
     """)
@@ -48,6 +48,11 @@ def write( text ):
 def check_urls(config, urls):
     """Will go through the url list and check if they are up"""
 
+    state_pos = 30
+    for url in urls:
+        if len(url) > state_pos:
+            state_pos = len(url)
+
     for url in urls:
 
         if not config.has_section( url ):
@@ -67,7 +72,7 @@ def check_urls(config, urls):
         res = wget.wait()
 
         if res and res != 6:
-            write( "%s%sDown%s" % (Fore.RED, (30-len(url))*" ", Fore.RESET))
+            write( "%s%sDown%s" % (Fore.RED, (state_pos-len(url))*" ", Fore.RESET))
 
             if down_earlier:
                 write( " (State already known)" )
@@ -80,7 +85,7 @@ def check_urls(config, urls):
             config.set( url, "Down", "yes" )
 
         else:
-            write( "%s  %sUp%s" % (Fore.GREEN, (30-len(url))*" ", Fore.RESET))
+            write( "%s  %sUp%s" % (Fore.GREEN, (state_pos-len(url))*" ", Fore.RESET))
 
             if not down_earlier:
                 write( " (State already known)" )
@@ -114,7 +119,7 @@ def send_mail(subject, body):
 
 def main():
     """main"""
- 
+
     parse_command_line_options()
 
     urls = []
