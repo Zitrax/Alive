@@ -10,11 +10,12 @@ from optparse import OptionParser
 import ConfigParser
 import datetime
 import time
+import os
 
 import smtplib
 from email.mime.text import MIMEText
 
-sys.path.append("colorama")
+sys.path.append(os.path.join(os.path.dirname(__file__),"colorama"))
 from colorama import Fore
 
 def parse_command_line_options():
