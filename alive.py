@@ -144,6 +144,12 @@ def send_mail(subject, body):
     smtp.quit()
     return True
 
+def writeConfig(config):
+    # Write the configuration file
+    with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
+        config.write(configfile)
+
+
 def setup():
     """Read in the config file and URLs"""
     urls = []
@@ -162,11 +168,24 @@ import unittest
 
 class TestAlive(unittest.TestCase):    
 
-    def test_help(self):
+    def test_empty_config(self):
         sys.argv = [sys.argv[0], "-c", "test_config", "-l"]
+        try:
+            os.remove("test_config")
+        except:
+            pass
         parse_command_line_options()
         (config,urls) = setup()
         self.assertEqual(len(config.sections()),0)
+
+    def test_google(self):
+        sys.argv = [sys.argv[0], "-c", "test_config", "-u", "www.google.com"]
+        parse_command_line_options()
+        (config,urls) = setup()
+        check_urls(config, urls)
+        writeConfig(config)
+        (config,urls) = setup()
+        self.assertEqual(len(config.sections()),1)
         
 
 def main():
@@ -191,10 +210,7 @@ def main():
             return
 
         check_urls(config, urls)
-
-        # Write the configuration file
-        with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
-            config.write(configfile)
+        writeConfig(config)
 
 
 if __name__ == "__main__":
