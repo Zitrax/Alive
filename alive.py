@@ -36,12 +36,14 @@ def parse_command_line_options():
     parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
     parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true", help="Test all existing URLs in the cfg file.")
     parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
+    parser.add_option("--test", dest="TEST", action="store_true", help="Run unit tests")
 
     (OPTIONS, args) = parser.parse_args()
 
-    if not (OPTIONS.URL or OPTIONS.KNOWN or OPTIONS.LIST) or len(args):
+    if not (OPTIONS.TEST or OPTIONS.URL or OPTIONS.KNOWN or OPTIONS.LIST) or len(args):
         parser.print_help()
-        sys.exit(1)
+        return False
+    return True
 
 def write( text ):
     """Writes the string only if not in quiet mode"""
@@ -142,11 +144,8 @@ def send_mail(subject, body):
     smtp.quit()
     return True
 
-def main():
-    """main"""
-
-    parse_command_line_options()
-
+def setup():
+    """Read in the config file and URLs"""
     urls = []
     if OPTIONS.URL:
         urls += OPTIONS.URL.split()
@@ -154,23 +153,49 @@ def main():
     config = ConfigParser.RawConfigParser()
     config.read( OPTIONS.CONFIGFILE )
 
-    if OPTIONS.LIST:
-        if len(config.sections()):
-            print "Known URLs in the config file '%s':\n" % OPTIONS.CONFIGFILE
-            for url in config.sections():
-                print url
-        else:
-            print "No URLs in the config file '%s':" % OPTIONS.CONFIGFILE
-        sys.exit(0)
-
     if OPTIONS.KNOWN:
         urls += config.sections()
 
-    check_urls(config, urls)
+    return (config,urls)
 
-    # Write the configuration file
-    with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
-        config.write(configfile)
+import unittest
+
+class TestAlive(unittest.TestCase):    
+
+    def test_help(self):
+        sys.argv = [sys.argv[0], "-c", "test_config", "-l"]
+        parse_command_line_options()
+        (config,urls) = setup()
+        self.assertEqual(len(config.sections()),0)
+        
+
+def main():
+    """main"""
+
+    if not parse_command_line_options():
+        sys.exit(1)
+
+    if OPTIONS.TEST:
+        suite = unittest.TestLoader().loadTestsFromTestCase(TestAlive)
+        unittest.TextTestRunner(verbosity=2).run(suite)
+    else:
+        (config,urls) = setup()
+
+        if OPTIONS.LIST:
+            if len(config.sections()):
+                print "Known URLs in the config file '%s':\n" % OPTIONS.CONFIGFILE
+                for url in config.sections():
+                    print url
+                else:
+                    print "No URLs in the config file '%s':" % OPTIONS.CONFIGFILE
+            return
+
+        check_urls(config, urls)
+
+        # Write the configuration file
+        with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
+            config.write(configfile)
+
 
 if __name__ == "__main__":
     main()
