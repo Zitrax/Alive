@@ -20,7 +20,6 @@ from colorama import Fore
 
 class Alive:
 
-
     def parse_command_line_options(self):
         """Will parse all options given on the command line and exit if required arguments are not given"""
     
@@ -173,11 +172,17 @@ class TestAlive(unittest.TestCase):
 
     def setUp(self):
         self.alive = Alive()
-        self.configfile = "test_config"
+        self.configfile = "unittest_test_config"
         try:
             os.remove(self.configfile)
         except:
             pass
+ 
+    def __del__(self):
+        try:
+            os.remove(self.configfile)
+        except:
+            pass        
  
     def test_empty_config(self):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-l"]
@@ -204,6 +209,26 @@ class TestAlive(unittest.TestCase):
         
     def test_down(self):
         self.urlTest("www.ifnvernieunviereev.com",False)
+
+    def test_known(self):
+        # First just add a url to the config file
+        url = "www.google.com"
+        (config,urls) = self.alive.setup()
+        config.add_section(url)
+        self.alive.writeConfig(config)
+        
+        # Then lets test the existing urls from the file
+        sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
+        self.alive.parse_command_line_options()
+        (config,urls) = self.alive.setup()
+        self.alive.check_urls(config, urls)
+        self.alive.writeConfig(config)
+        (config,urls) = self.alive.setup()
+        self.assertEqual(len(config.sections()),1)
+        self.assertTrue(config.has_section(url))
+        self.assertFalse(config.getboolean(url, "Down"))
+
+    # TODO: Should check the Time value
 
 def main():
     """main"""
