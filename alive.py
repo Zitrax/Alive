@@ -19,6 +19,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__),"colorama"))
 from colorama import Fore
 
 class Alive:
+    """
+    This class takes as input a URL and checks with wget if it can be accessed,
+    with mail notifications when the site goes up or down.
+    """
 
     def __init__(self):
         self.options = None
