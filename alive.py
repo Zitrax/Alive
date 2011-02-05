@@ -112,9 +112,9 @@ class Alive:
     
         for site in sites:
           
-            wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
+            wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", site.getUrl()] )
     
-            self.write( "Trying %s... " % url )
+            self.write( "Trying %s... " % site.getUrl() )
     
             res = wget.wait()
     
@@ -126,7 +126,7 @@ class Alive:
     def report( self, site, down, state_pos ):
         """Report the state and eventual change"""
     
-        known_earlier = down and site.getDown()
+        known_earlier = down == site.getDown()
     
         if down:
             state = "down"
@@ -243,11 +243,13 @@ class TestAlive(unittest.TestCase):
         self.urlTest("www.ifjirfijfirjfrijfiX.com", False,2)
 
     def test_known(self):
-        # First just add a url to the config file
-        url = "www.google.com"
+        # First just add two urls to the config file
+        url_up   = "www.google.com"
+        url_down = "aefasdfasdfopj"
         self.alive.parse_command_line_options()
         (config,urls) = self.alive.setup()
-        config.add_section(url)
+        config.add_section(url_up)
+        config.add_section(url_down)
         self.alive.writeConfig(config)
         
         # Then lets test the existing urls from the file
@@ -257,9 +259,11 @@ class TestAlive(unittest.TestCase):
         self.alive.check_urls(config, urls)
         self.alive.writeConfig(config)
         (config,urls) = self.alive.setup()
-        self.assertEqual(len(config.sections()),1)
-        self.assertTrue(config.has_section(url))
-        self.assertFalse(config.getboolean(url, "Down"))
+        self.assertEqual(len(config.sections()),2)
+        self.assertTrue(config.has_section(url_up))
+        self.assertTrue(config.has_section(url_down))
+        self.assertFalse(config.getboolean(url_up, "Down"))
+        self.assertTrue(config.getboolean(url_down, "Down"))
 
     # TODO: Should check the Time value
 
