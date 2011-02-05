@@ -20,12 +20,13 @@ from colorama import Fore
 
 class Alive:
 
+    def __init__(self):
+        self.options = None
+
     def parse_command_line_options(self):
-        """Will parse all options given on the command line and exit if required arguments are not given"""
+        """Will parse all self.options given on the command line and exit if required arguments are not given"""
     
-        global OPTIONS
-    
-        parser = OptionParser(usage="%prog [options]", description=
+        parser = OptionParser(usage="%prog [self.options]", description=
         """This script takes as input one or several URLs and checks with wget if
         they can be accessed.
         """)
@@ -40,16 +41,16 @@ class Alive:
         parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
         parser.add_option("--test", dest="TEST", action="store_true", help="Run unit tests")
     
-        (OPTIONS, args) = parser.parse_args()
+        (self.options, args) = parser.parse_args()
     
-        if not (OPTIONS.TEST or OPTIONS.URL or OPTIONS.KNOWN or OPTIONS.LIST) or len(args):
+        if not (self.options.TEST or self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()
             return False
         return True
     
     def write(self, text):
         """Writes the string only if not in quiet mode"""
-        if not OPTIONS.QUIET:
+        if not self.options.QUIET:
             print text,
             sys.stdout.flush()
     
@@ -116,8 +117,8 @@ class Alive:
         self.write(")\n")
     
         if not known_earlier:
-            if OPTIONS.TO:
-                if( not send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+            if self.options.TO:
+                if( not self.send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
                     return
             config.set( url, "Time", int(time.time()) )
     
@@ -128,40 +129,39 @@ class Alive:
     
     def send_mail(self, subject, body):
         """Send a mail using smtp server on localhost"""
-        write( "Mailing...")
+        self.write( "Mailing...")
         msg = MIMEText(body)
         msg['Subject'] = subject
-        if OPTIONS.FROM:
-            msg['From'] = OPTIONS.FROM
-        msg['To'] = OPTIONS.TO
+        if self.options.FROM:
+            msg['From'] = self.options.FROM
+        msg['To'] = self.options.TO
         smtp = smtplib.SMTP()
-        if OPTIONS.DEBUG:
+        if self.options.DEBUG:
             smtp.set_debuglevel(True)
         try:
             smtp.connect()
         except:
             print "Could not send email, do you have an SMTP server running on localhost?"
             return False
-        smtp.sendmail(OPTIONS.FROM, [OPTIONS.TO], msg.as_string())
+        smtp.sendmail(self.options.FROM, [self.options.TO], msg.as_string())
         smtp.quit()
         return True
     
     def writeConfig(self, config):
         # Write the configuration file
-        with open( OPTIONS.CONFIGFILE, 'wb') as configfile:
+        with open( self.options.CONFIGFILE, 'wb') as configfile:
             config.write(configfile)
-    
     
     def setup(self):
         """Read in the config file and URLs"""
         urls = []
-        if OPTIONS.URL:
-            urls += OPTIONS.URL.split()
+        if self.options.URL:
+            urls += self.options.URL.split()
     
         config = ConfigParser.RawConfigParser()
-        config.read( OPTIONS.CONFIGFILE )
+        config.read( self.options.CONFIGFILE )
     
-        if OPTIONS.KNOWN:
+        if self.options.KNOWN:
             urls += config.sections()
     
         return (config,urls)
@@ -190,14 +190,14 @@ class TestAlive(unittest.TestCase):
         (config,urls) = self.alive.setup()
         self.assertEqual(len(config.sections()),0)
 
-    def urlTest(self,url,up):
+    def urlTest(self,url,up,count=1):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-u", url]
         self.alive.parse_command_line_options()
         (config,urls) = self.alive.setup()
         self.alive.check_urls(config, urls)
         self.alive.writeConfig(config)
         (config,urls) = self.alive.setup()
-        self.assertEqual(len(config.sections()),1)
+        self.assertEqual(len(config.sections()),count)
         self.assertTrue(config.has_section(url))
         if up:
             self.assertFalse(config.getboolean(url, "Down"))
@@ -209,10 +209,15 @@ class TestAlive(unittest.TestCase):
         
     def test_down(self):
         self.urlTest("www.ifnvernieunviereev.com",False)
+        
+    def test_two_sites(self):
+        self.urlTest("www.ifjirfijfirjfrijfiY.com", False)
+        self.urlTest("www.ifjirfijfirjfrijfiX.com", False,2)
 
     def test_known(self):
         # First just add a url to the config file
         url = "www.google.com"
+        self.alive.parse_command_line_options()
         (config,urls) = self.alive.setup()
         config.add_section(url)
         self.alive.writeConfig(config)
@@ -238,20 +243,20 @@ def main():
     if not alive.parse_command_line_options():
         sys.exit(1)
 
-    if OPTIONS.TEST:
+    if alive.options.TEST:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestAlive)
         
         unittest.TextTestRunner(verbosity=2).run(suite)
     else:
         (config,urls) = alive.setup()
 
-        if OPTIONS.LIST:
+        if alive.options.LIST:
             if len(config.sections()):
-                print "Known URLs in the config file '%s':\n" % OPTIONS.CONFIGFILE
+                print "Known URLs in the config file '%s':\n" % alive.options.CONFIGFILE
                 for url in config.sections():
                     print url
-                else:
-                    print "No URLs in the config file '%s':" % OPTIONS.CONFIGFILE
+            else:
+                print "No URLs in the config file '%s'" % alive.options.CONFIGFILE
             return
 
         alive.check_urls(config, urls)
