@@ -42,19 +42,19 @@ class Site:
             self.__last_change = int(time.time())
             config[0].set( url, "Time", self.__last_change )
 
-    def getLastChange(self):
+    def get_last_change(self):
         return self.__last_change
  
-    def setLastChange(self, time):
+    def set_last_change(self, time):
         self.__config[0].set(self.__url, "Time", time)
  
-    def getDown(self):
+    def get_down(self):
         return self.__down
 
-    def setDown(self, down):
+    def set_down(self, down):
         self.__config[0].set(self.__url, "Down", "yes" if down else "no")
 
-    def getUrl(self):
+    def get_url(self):
         return self.__url
 
 class Alive:
@@ -103,18 +103,18 @@ class Alive:
         # Create Site objects
         sites = []
         for url in urls:
-            sites += [Site(url,[config])]
+            sites += [Site(url, [config])]
     
         state_pos = 30
         for site in sites:
-            if len(site.getUrl()) > state_pos:
-                state_pos = len(site.getUrl())
+            if len(site.get_url()) > state_pos:
+                state_pos = len(site.get_url())
     
         for site in sites:
           
-            wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", site.getUrl()] )
+            wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", site.get_url()] )
     
-            self.write( "Trying %s... " % site.getUrl() )
+            self.write( "Trying %s... " % site.get_url() )
     
             res = wget.wait()
     
@@ -126,7 +126,7 @@ class Alive:
     def report( self, site, down, state_pos ):
         """Report the state and eventual change"""
     
-        known_earlier = down == site.getDown()
+        known_earlier = down == site.get_down()
     
         if down:
             state = "down"
@@ -137,23 +137,23 @@ class Alive:
             color = Fore.GREEN
             space = "  "
     
-        self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.getUrl()))*" ", state, Fore.RESET))
+        self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.get_url()))*" ", state, Fore.RESET))
     
         if known_earlier:
             self.write( " ( State already known" )
-            if site.getLastChange():
-                self.write( "since %s" % time.ctime(site.getLastChange()) )
+            if site.get_last_change():
+                self.write( "since %s" % time.ctime(site.get_last_change()) )
         else:
             self.write( " ( State changed" )
         self.write(")\n")
     
         if not known_earlier:
             if self.options.TO:
-                if( not self.send_mail( "%s %s" % (site.getUrl(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+                if( not self.send_mail( "%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
                     return
-            site.setLastChange(int(time.time()))
+            site.set_last_change(int(time.time()))
    
-        site.setDown(down)
+        site.set_down(down)
     
     def send_mail(self, subject, body):
         """Send a mail using smtp server on localhost"""
@@ -175,7 +175,7 @@ class Alive:
         smtp.quit()
         return True
     
-    def writeConfig(self, config):
+    def write_config(self, config):
         # Write the configuration file
         with open( self.options.CONFIGFILE, 'wb') as configfile:
             config.write(configfile)
@@ -192,13 +192,17 @@ class Alive:
         if self.options.KNOWN:
             urls += config.sections()
     
-        return (config,urls)
+        return (config, urls)
 
 import unittest
 
 class TestAlive(unittest.TestCase):    
 
     def setUp(self):
+        """
+        This function must be named setUp, it's run
+        before each test.
+        """
         self.alive = Alive()
         self.configfile = "unittest_test_config"
         try:
@@ -215,51 +219,51 @@ class TestAlive(unittest.TestCase):
     def test_empty_config(self):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-l"]
         self.alive.parse_command_line_options()
-        (config,urls) = self.alive.setup()
-        self.assertEqual(len(config.sections()),0)
+        (config, urls) = self.alive.setup()
+        self.assertEqual(len(config.sections()), 0)
 
-    def urlTest(self,url,up,count=1):
+    def url_test(self, url, should_be_up, count=1):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-u", url]
         self.alive.parse_command_line_options()
-        (config,urls) = self.alive.setup()
+        (config, urls) = self.alive.setup()
         self.alive.check_urls(config, urls)
-        self.alive.writeConfig(config)
-        (config,urls) = self.alive.setup()
-        self.assertEqual(len(config.sections()),count)
+        self.alive.write_config(config)
+        (config, urls) = self.alive.setup()
+        self.assertEqual(len(config.sections()), count)
         self.assertTrue(config.has_section(url))
-        if up:
+        if should_be_up:
             self.assertFalse(config.getboolean(url, "Down"))
         else:
             self.assertTrue(config.getboolean(url, "Down"))
 
     def test_google(self):
-        self.urlTest("www.google.com",True)
+        self.url_test("www.google.com", True)
         
     def test_down(self):
-        self.urlTest("www.ifnvernieunviereev.com",False)
+        self.url_test("www.ifnvernieunviereev.com", False)
         
     def test_two_sites(self):
-        self.urlTest("www.ifjirfijfirjfrijfiY.com", False)
-        self.urlTest("www.ifjirfijfirjfrijfiX.com", False,2)
+        self.url_test("www.ifjirfijfirjfrijfiY.com", False)
+        self.url_test("www.ifjirfijfirjfrijfiX.com", False, 2)
 
     def test_known(self):
         # First just add two urls to the config file
         url_up   = "www.google.com"
         url_down = "aefasdfasdfopj"
         self.alive.parse_command_line_options()
-        (config,urls) = self.alive.setup()
+        (config, urls) = self.alive.setup()
         config.add_section(url_up)
         config.add_section(url_down)
-        self.alive.writeConfig(config)
+        self.alive.write_config(config)
         
         # Then lets test the existing urls from the file
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
         self.alive.parse_command_line_options()
-        (config,urls) = self.alive.setup()
+        (config, urls) = self.alive.setup()
         self.alive.check_urls(config, urls)
-        self.alive.writeConfig(config)
-        (config,urls) = self.alive.setup()
-        self.assertEqual(len(config.sections()),2)
+        self.alive.write_config(config)
+        (config, urls) = self.alive.setup()
+        self.assertEqual(len(config.sections()), 2)
         self.assertTrue(config.has_section(url_up))
         self.assertTrue(config.has_section(url_down))
         self.assertFalse(config.getboolean(url_up, "Down"))
@@ -280,7 +284,7 @@ def main():
         
         unittest.TextTestRunner(verbosity=2).run(suite)
     else:
-        (config,urls) = alive.setup()
+        (config, urls) = alive.setup()
 
         if alive.options.LIST:
             if len(config.sections()):
@@ -292,7 +296,7 @@ def main():
             return
 
         alive.check_urls(config, urls)
-        alive.writeConfig(config)
+        alive.write_config(config)
 
 
 if __name__ == "__main__":
