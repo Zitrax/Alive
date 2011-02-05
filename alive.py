@@ -18,6 +18,45 @@ from email.mime.text import MIMEText
 sys.path.append(os.path.join(os.path.dirname(__file__),"colorama"))
 from colorama import Fore
 
+class Site:
+    """Class that handles one site to check"""
+
+    def __init__(self, url, config):
+        """We need to pass by reference so pass the config as an array wrapper"""
+        self.__url = url
+        self.__config = config
+        if not config[0].has_section( url ):
+            config[0].add_section( url )
+        try:
+            self.__down = config[0].getboolean( url, "Down" )
+        except ValueError:
+            self.__down = False
+        except ConfigParser.NoOptionError:
+            self.__down = False
+        try:
+            self.__last_change = config[0].getint( url, "Time" )
+        except ValueError:
+            self.__last_change = int(time.time())
+            config[0].set( url, "Time", self.__last_change )
+        except ConfigParser.NoOptionError:
+            self.__last_change = int(time.time())
+            config[0].set( url, "Time", self.__last_change )
+
+    def getLastChange(self):
+        return self.__last_change
+ 
+    def setLastChange(self, time):
+        self.__config[0].set(self.__url, "Time", time)
+ 
+    def getDown(self):
+        return self.__down
+
+    def setDown(self, down):
+        self.__config[0].set(self.__url, "Down", "yes" if down else "no")
+
+    def getUrl(self):
+        return self.__url
+
 class Alive:
     """
     This class takes as input a URL and checks with wget if it can be accessed,
@@ -61,32 +100,18 @@ class Alive:
     def check_urls(self, config, urls):
         """Will go through the url list and check if they are up"""
     
+        # Create Site objects
+        sites = []
+        for url in urls:
+            sites += [Site(url,[config])]
+    
         state_pos = 30
-        for url in urls:
-            if len(url) > state_pos:
-                state_pos = len(url)
+        for site in sites:
+            if len(site.getUrl()) > state_pos:
+                state_pos = len(site.getUrl())
     
-        for url in urls:
-    
-            if not config.has_section( url ):
-                config.add_section( url )
-    
-            try:
-                down_earlier = config.getboolean( url, "Down" )
-            except ValueError:
-                down_earlier = False
-            except ConfigParser.NoOptionError:
-                down_earlier = False
-    
-            try:
-                last_change = config.getint( url, "Time" )
-            except ValueError:
-                last_change = int(time.time())
-                config.set( url, "Time", last_change )
-            except ConfigParser.NoOptionError:
-                last_change = int(time.time())
-                config.set( url, "Time", last_change )
-    
+        for site in sites:
+          
             wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", url] )
     
             self.write( "Trying %s... " % url )
@@ -94,12 +119,14 @@ class Alive:
             res = wget.wait()
     
             if res and res != 6:
-                self.report( config, url, True, down_earlier, last_change, state_pos )
+                self.report( site, True, state_pos )
             else:
-                self.report( config, url, False, not down_earlier, last_change, state_pos )
+                self.report( site, False, state_pos )
     
-    def report( self, config, url, down, known_earlier, last_change, state_pos ):
+    def report( self, site, down, state_pos ):
         """Report the state and eventual change"""
+    
+        known_earlier = down and site.getDown()
     
         if down:
             state = "down"
@@ -110,26 +137,23 @@ class Alive:
             color = Fore.GREEN
             space = "  "
     
-        self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(url))*" ", state, Fore.RESET))
+        self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.getUrl()))*" ", state, Fore.RESET))
     
         if known_earlier:
             self.write( " ( State already known" )
-            if last_change:
-                self.write( "since %s" % time.ctime(last_change) )
+            if site.getLastChange():
+                self.write( "since %s" % time.ctime(site.getLastChange()) )
         else:
             self.write( " ( State changed" )
         self.write(")\n")
     
         if not known_earlier:
             if self.options.TO:
-                if( not self.send_mail( "%s %s" % (url, state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+                if( not self.send_mail( "%s %s" % (site.getUrl(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
                     return
-            config.set( url, "Time", int(time.time()) )
-    
-        if down:
-            config.set( url, "Down", "yes" )
-        else:
-            config.set( url, "Down", "no" )
+            site.setLastChange(int(time.time()))
+   
+        site.setDown(down)
     
     def send_mail(self, subject, body):
         """Send a mail using smtp server on localhost"""
