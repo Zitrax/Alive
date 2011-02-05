@@ -27,6 +27,9 @@ class Site:
         self.__config = config
         if not config[0].has_section( url ):
             config[0].add_section( url )
+            self.__new = True
+        else:
+            self.__new = False
         try:
             self.__down = config[0].getboolean( url, "Down" )
         except ValueError:
@@ -56,6 +59,9 @@ class Site:
 
     def get_url(self):
         return self.__url
+
+    def get_new(self):
+        return self.__new
 
 class Alive:
     """
@@ -139,7 +145,9 @@ class Alive:
     
         self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.get_url()))*" ", state, Fore.RESET))
     
-        if known_earlier:
+        if site.get_new():
+            self.write( " ( New URL" )
+        elif known_earlier:
             self.write( " ( State already known" )
             if site.get_last_change():
                 self.write( "since %s" % time.ctime(site.get_last_change()) )
