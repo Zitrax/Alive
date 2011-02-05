@@ -265,7 +265,7 @@ class TestAlive(unittest.TestCase):
         self.assertFalse(config.getboolean(url_up, "Down"))
         self.assertTrue(config.getboolean(url_down, "Down"))
 
-    # TODO: Should check the Time value
+    # TODO: Should check the Time value, and command line options
 
 def main():
     """main"""
