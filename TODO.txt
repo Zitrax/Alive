@@ -1,0 +1,21 @@
+Currently mail can be sent when we switch state, we should allow for a arbitrary actions or commands to be run at this point. This should be configurable in a config file.
+
+F.ex:
+
+[site.com]
+down = no
+time = 1296924119
+du = action_one()
+ud = reboot(123.45.67.89)
+
+Where 'du' are the actions to perform when site goes from down to up.
+
+Actions can be configured in a separate file (actions.cfg):
+
+[reboot_server]
+command = ssh %param1% shutdown -r now
+
+where %param1% is the parameter in () in the site configuration.
+
+Preferably the actions could be both an external command or some additional python code.
+

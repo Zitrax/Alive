@@ -75,7 +75,7 @@ class Alive:
     def parse_command_line_options(self):
         """Will parse all self.options given on the command line and exit if required arguments are not given"""
     
-        parser = OptionParser(usage="%prog [self.options]", description=
+        parser = OptionParser(usage="%prog [options]", description=
         """This script takes as input one or several URLs and checks with wget if
         they can be accessed.
         """)
