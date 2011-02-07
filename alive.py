@@ -47,10 +47,10 @@ class Site:
 
     def get_last_change(self):
         return self.__last_change
- 
+
     def set_last_change(self, time):
         self.__config[0].set(self.__url, "Time", time)
- 
+
     def get_down(self):
         return self.__down
 
@@ -74,12 +74,12 @@ class Alive:
 
     def parse_command_line_options(self):
         """Will parse all self.options given on the command line and exit if required arguments are not given"""
-    
+
         parser = OptionParser(usage="%prog [options]", description=
         """This script takes as input one or several URLs and checks with wget if
         they can be accessed.
         """)
-    
+
         parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
         parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all prints")
         parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
@@ -89,51 +89,51 @@ class Alive:
         parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true", help="Test all existing URLs in the cfg file.")
         parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
         parser.add_option("--test", dest="TEST", action="store_true", help="Run unit tests")
-    
+
         (self.options, args) = parser.parse_args()
-    
+
         if not (self.options.TEST or self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()
             return False
         return True
-    
+
     def write(self, text):
         """Writes the string only if not in quiet mode"""
         if not self.options.QUIET:
             print text,
             sys.stdout.flush()
-    
+
     def check_urls(self, config, urls):
         """Will go through the url list and check if they are up"""
-    
+
         # Create Site objects
         sites = []
         for url in urls:
             sites += [Site(url, [config])]
-    
+
         state_pos = 30
         for site in sites:
             if len(site.get_url()) > state_pos:
                 state_pos = len(site.get_url())
-    
+
         for site in sites:
-          
+
             wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", site.get_url()] )
-    
+
             self.write( "Trying %s... " % site.get_url() )
-    
+
             res = wget.wait()
-    
+
             if res and res != 6:
                 self.report( site, True, state_pos )
             else:
                 self.report( site, False, state_pos )
-    
+
     def report( self, site, down, state_pos ):
         """Report the state and eventual change"""
-    
+
         known_earlier = down == site.get_down()
-    
+
         if down:
             state = "down"
             color = Fore.RED
@@ -142,9 +142,9 @@ class Alive:
             state = "up"
             color = Fore.GREEN
             space = "  "
-    
+
         self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.get_url()))*" ", state, Fore.RESET))
-    
+
         if site.get_new():
             self.write( " ( New URL" )
         elif known_earlier:
@@ -154,15 +154,15 @@ class Alive:
         else:
             self.write( " ( State changed" )
         self.write(")\n")
-    
+
         if not known_earlier:
             if self.options.TO:
                 if( not self.send_mail( "%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
                     return
             site.set_last_change(int(time.time()))
-   
+
         site.set_down(down)
-    
+
     def send_mail(self, subject, body):
         """Send a mail using smtp server on localhost"""
         self.write( "Mailing...")
@@ -182,29 +182,29 @@ class Alive:
         smtp.sendmail(self.options.FROM, [self.options.TO], msg.as_string())
         smtp.quit()
         return True
-    
+
     def write_config(self, config):
         # Write the configuration file
         with open( self.options.CONFIGFILE, 'wb') as configfile:
             config.write(configfile)
-    
+
     def setup(self):
         """Read in the config file and URLs"""
         urls = []
         if self.options.URL:
             urls += self.options.URL.split()
-    
+
         config = ConfigParser.RawConfigParser()
         config.read( self.options.CONFIGFILE )
-    
+
         if self.options.KNOWN:
             urls += config.sections()
-    
+
         return (config, urls)
 
 import unittest
 
-class TestAlive(unittest.TestCase):    
+class TestAlive(unittest.TestCase):
 
     def setUp(self):
         """
@@ -217,13 +217,13 @@ class TestAlive(unittest.TestCase):
             os.remove(self.configfile)
         except:
             pass
- 
+
     def __del__(self):
         try:
             os.remove(self.configfile)
         except:
-            pass        
- 
+            pass
+
     def test_empty_config(self):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-l"]
         self.alive.parse_command_line_options()
@@ -246,10 +246,10 @@ class TestAlive(unittest.TestCase):
 
     def test_google(self):
         self.url_test("www.google.com", True)
-        
+
     def test_down(self):
         self.url_test("www.ifnvernieunviereev.com", False)
-        
+
     def test_two_sites(self):
         self.url_test("www.ifjirfijfirjfrijfiY.com", False)
         self.url_test("www.ifjirfijfirjfrijfiX.com", False, 2)
@@ -263,7 +263,7 @@ class TestAlive(unittest.TestCase):
         config.add_section(url_up)
         config.add_section(url_down)
         self.alive.write_config(config)
-        
+
         # Then lets test the existing urls from the file
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
         self.alive.parse_command_line_options()
@@ -289,7 +289,7 @@ def main():
 
     if alive.options.TEST:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestAlive)
-        
+
         unittest.TextTestRunner(verbosity=2).run(suite)
     else:
         (config, urls) = alive.setup()
