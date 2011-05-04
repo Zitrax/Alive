@@ -95,21 +95,21 @@ class Alive:
 
         (self.options, args) = parser.parse_args()
 
-        def permission_check(file):
+        def permission_check(file_name):
             """Check permissions"""
             mod = os.stat(sys.argv[0]).st_mode
             if mod & stat.S_IRGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group readable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group readable\n" % file_name, Fore.RESET) )
             if mod & stat.S_IXGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group executable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group executable\n" % file_name, Fore.RESET))
             if mod & stat.S_IWGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group writable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group writable\n" % file_name, Fore.RESET))
             if mod & stat.S_IROTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other readable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other readable\n" % file_name, Fore.RESET))
             if mod & stat.S_IXOTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other executable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other executable\n" % file_name, Fore.RESET))
             if mod & stat.S_IWOTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other writable\n" % file, Fore.RESET))
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other writable\n" % file_name, Fore.RESET))
 
         permission_check(sys.argv[0])
         permission_check(self.options.CONFIGFILE)
@@ -123,7 +123,7 @@ class Alive:
     def write(self, text):
         """Writes the string only if not in quiet mode"""
         if not self.options.QUIET:
-            print text,
+            sys.stdout.write(text)
             sys.stdout.flush()
 
     def check_urls(self, config, urls):
