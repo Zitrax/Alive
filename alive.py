@@ -5,6 +5,7 @@ with mail notifications when the site goes up or down.
 """
 
 import subprocess
+import shlex
 import sys
 from optparse import OptionParser
 import ConfigParser
@@ -22,10 +23,11 @@ from colorama import Fore
 class Site:
     """Class that handles one site to check"""
 
-    def __init__(self, url, config):
+    def __init__(self, url, config, alive):
         """We need to pass by reference so pass the config as an array wrapper"""
         self.__url = url
         self.__config = config
+        self.__alive = alive
         if not config[0].has_section( url ):
             config[0].add_section( url )
             self.__new = True
@@ -65,6 +67,26 @@ class Site:
 
     def get_new(self):
         return self.__new
+
+    def get_config(self):
+        return self.__config
+
+    def activate_triggers(self, down=False):
+        """When site switch state it can have some triggers that should be activated"""
+        command = ""
+        if down and self.__config[0].has_option(self.__url, "down_trigger"):
+            command = self.__config[0].get(self.__url, "down_trigger")
+        elif not down and self.__config[0].has_option(self.__url, "up_trigger"):
+            command = self.__config[0].get(self.__url, "up_trigger")
+
+        if len(command):
+            ret = 1
+            try:
+                ret = subprocess.call( shlex.split(command) )
+            except:
+                pass
+            if ret:
+                self.__alive.write("%sWARNING -  could not run '%s'%s\n" % (Fore.YELLOW, command, Fore.RESET))
 
 class Alive:
     """
@@ -132,7 +154,7 @@ class Alive:
         # Create Site objects
         sites = []
         for url in urls:
-            sites += [Site(url, [config])]
+            sites += [Site(url, [config], self)]
 
         state_pos = 30
         for site in sites:
@@ -182,6 +204,7 @@ class Alive:
             if self.options.TO:
                 if( not self.send_mail( "%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
                     return
+            site.activate_triggers(down)
             site.set_last_change(int(time.time()))
 
         site.set_down(down)
@@ -277,11 +300,11 @@ class TestAlive(unittest.TestCase):
         self.url_test("www.ifjirfijfirjfrijfiY.com", False)
         self.url_test("www.ifjirfijfirjfrijfiX.com", False, 2)
 
-    def get_a_site(self):
+    def get_a_site(self, url="www.test.com"):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
-        return Site("www.test.com", [config])
+        return Site(url, [config], self.alive)
 
     def test_set_get_down_config(self):
         site = self.get_a_site()
@@ -310,6 +333,42 @@ class TestAlive(unittest.TestCase):
     def test_set_get_new(self):
         site = self.get_a_site()
         self.assertTrue(site.get_new())
+
+    def test_up_trigger(self):
+        trigger_file = "up_trigger"
+        url = "www.google.com"
+        # Remove any eventual old file
+        if os.path.exists(trigger_file):
+            os.remove(trigger_file)
+        # First create a site object for which google is down
+        site = self.get_a_site(url)
+        site.set_down(True)
+        config = site.get_config()
+        # Now add a trigger
+        config[0].set(url, "up_trigger", "touch %s" % trigger_file)
+        self.alive.write_config(config[0])
+        self.url_test(url, True)
+        # Check if trigger file was created
+        self.assertTrue(os.path.exists(trigger_file))
+        os.remove(trigger_file)
+
+    def test_down_trigger(self):
+        trigger_file = "down_trigger"
+        url = "www.afwjkefnwejknfwkejfnwkejnfke.com"
+        # Remove any eventual old file
+        if os.path.exists(trigger_file):
+            os.remove(trigger_file)
+        # First create a site object for which google is down
+        site = self.get_a_site(url)
+        site.set_down(False)
+        config = site.get_config()
+        # Now add a trigger
+        config[0].set(url, "down_trigger", "touch %s" % trigger_file)
+        self.alive.write_config(config[0])
+        self.url_test(url, False)
+        # Check if trigger file was created
+        self.assertTrue(os.path.exists(trigger_file))
+        os.remove(trigger_file)
 
     def test_known(self):
         # First just add two urls to the config file
