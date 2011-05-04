@@ -11,6 +11,7 @@ import ConfigParser
 import datetime
 import time
 import os
+import stat
 
 import smtplib
 from email.mime.text import MIMEText
@@ -94,9 +95,29 @@ class Alive:
 
         (self.options, args) = parser.parse_args()
 
+        def permission_check(file):
+            """Check permissions"""
+            mod = os.stat(sys.argv[0]).st_mode
+            if mod & stat.S_IRGRP:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group readable\n" % file, Fore.RESET))
+            if mod & stat.S_IXGRP:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group executable\n" % file, Fore.RESET))
+            if mod & stat.S_IWGRP:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group writable\n" % file, Fore.RESET))
+            if mod & stat.S_IROTH:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other readable\n" % file, Fore.RESET))
+            if mod & stat.S_IXOTH:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other executable\n" % file, Fore.RESET))
+            if mod & stat.S_IWOTH:
+                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other writable\n" % file, Fore.RESET))
+
+        permission_check(sys.argv[0])
+        permission_check(self.options.CONFIGFILE)
+
         if not (self.options.TEST or self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()
             return False
+
         return True
 
     def write(self, text):
