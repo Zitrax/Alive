@@ -51,9 +51,9 @@ class Site:
     def get_last_change(self):
         return self.__last_change
 
-    def set_last_change(self, time):
-        self.__config[0].set(self.__url, "Time", time)
-        self.__last_change = time
+    def set_last_change(self, new_time):
+        self.__config[0].set(self.__url, "Time", new_time)
+        self.__last_change = new_time
 
     def get_down(self):
         return self.__down
@@ -83,7 +83,7 @@ class Site:
             ret = 1
             try:
                 ret = subprocess.call( shlex.split(command) )
-            except:
+            except OSError:
                 pass
             if ret:
                 self.__alive.write("%sWARNING -  could not run '%s'%s\n" % (Fore.YELLOW, command, Fore.RESET))
