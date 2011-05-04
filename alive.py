@@ -119,7 +119,11 @@ class Alive:
 
         def permission_check(file_name):
             """Check permissions"""
-            mod = os.stat(sys.argv[0]).st_mode
+
+            if not os.path.exists(file_name):
+                return
+
+            mod = os.stat(file_name).st_mode
             if mod & stat.S_IRGRP:
                 self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group readable\n" % file_name, Fore.RESET) )
             if mod & stat.S_IXGRP:
