@@ -50,12 +50,14 @@ class Site:
 
     def set_last_change(self, time):
         self.__config[0].set(self.__url, "Time", time)
+        self.__last_change = time
 
     def get_down(self):
         return self.__down
 
     def set_down(self, down):
         self.__config[0].set(self.__url, "Down", "yes" if down else "no")
+        self.__down = down
 
     def get_url(self):
         return self.__url
@@ -253,6 +255,40 @@ class TestAlive(unittest.TestCase):
     def test_two_sites(self):
         self.url_test("www.ifjirfijfirjfrijfiY.com", False)
         self.url_test("www.ifjirfijfirjfrijfiX.com", False, 2)
+
+    def get_a_site(self):
+        sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
+        self.alive.parse_command_line_options()
+        (config, urls) = self.alive.setup()
+        return Site("www.test.com", [config])
+
+    def test_set_get_down_config(self):
+        site = self.get_a_site()
+        # Sites are assumed to be up by default
+        self.assertFalse(site.get_down())
+        site.set_down(False)
+        self.assertFalse(site.get_down())
+        site.set_down(True)
+        self.assertTrue(site.get_down())
+
+    def test_set_get_last_change(self):
+        site = self.get_a_site()
+        # Sites are assumed to have a valid last_change by default
+        self.assertTrue(site.get_last_change() > 0)
+        # last_change should not be in the future
+        self.assertTrue(site.get_last_change() < time.time())
+        site.set_last_change(0)
+        self.assertTrue(site.get_last_change()==0)
+        site.set_last_change(1500)
+        self.assertTrue(site.get_last_change()==1500)
+
+    def test_set_get_url(self):
+        site = self.get_a_site()
+        self.assertTrue(site.get_url() == "www.test.com")
+
+    def test_set_get_new(self):
+        site = self.get_a_site()
+        self.assertTrue(site.get_new())
 
     def test_known(self):
         # First just add two urls to the config file
