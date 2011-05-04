@@ -19,3 +19,6 @@ where %param1% is the parameter in () in the site configuration.
 
 Preferably the actions could be both an external command or some additional python code.
 
+Update: Triggers has now been added, but in a simple form that allows for a single shell command to be run
+
+* Should allow to configure the email notification in the cfg file
