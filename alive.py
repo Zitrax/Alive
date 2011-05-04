@@ -195,7 +195,7 @@ class Alive:
         elif known_earlier:
             self.write( " ( State already known" )
             if site.get_last_change():
-                self.write( "since %s" % time.ctime(site.get_last_change()) )
+                self.write( " since %s" % time.ctime(site.get_last_change()) )
         else:
             self.write( " ( State changed" )
         self.write(")\n")
