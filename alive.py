@@ -416,11 +416,11 @@ def main():
 
         if alive.options.LIST:
             if len(config.sections()):
-                print "Known URLs in the config file '%s':\n" % alive.options.CONFIGFILE
+                alive.write("Known URLs in the config file '%s':\n\n" % alive.options.CONFIGFILE)
                 for url in config.sections():
                     print url
             else:
-                print "No URLs in the config file '%s'" % alive.options.CONFIGFILE
+                alive.write("No URLs in the config file '%s'" % alive.options.CONFIGFILE)
             return
 
         alive.check_urls(config, urls)
