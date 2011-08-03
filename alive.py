@@ -362,7 +362,7 @@ class TestAlive(unittest.TestCase):
         # Remove any eventual old file
         if os.path.exists(trigger_file):
             os.remove(trigger_file)
-        # First create a site object for which google is down
+        # First create a site object with an invalid url and set it to be up
         site = self.get_a_site(url)
         site.set_down(False)
         config = site.get_config()
