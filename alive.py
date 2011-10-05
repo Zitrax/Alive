@@ -82,7 +82,7 @@ class Site:
         if len(command):
             ret = 1
             try:
-                ret = subprocess.call( shlex.split(command) )
+                ret = subprocess.call( command, shell=True )
             except OSError:
                 pass
             if ret:
