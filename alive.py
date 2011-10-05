@@ -362,7 +362,7 @@ class TestAlive(unittest.TestCase):
         # Remove any eventual old file
         if os.path.exists(trigger_file):
             os.remove(trigger_file)
-        # First create a site object for which google is down
+        # First create a site object with an invalid url and set it to be up
         site = self.get_a_site(url)
         site.set_down(False)
         config = site.get_config()
@@ -416,11 +416,11 @@ def main():
 
         if alive.options.LIST:
             if len(config.sections()):
-                print "Known URLs in the config file '%s':\n" % alive.options.CONFIGFILE
+                alive.write("Known URLs in the config file '%s':\n\n" % alive.options.CONFIGFILE)
                 for url in config.sections():
                     print url
             else:
-                print "No URLs in the config file '%s'" % alive.options.CONFIGFILE
+                alive.write("No URLs in the config file '%s'" % alive.options.CONFIGFILE)
             return
 
         alive.check_urls(config, urls)
