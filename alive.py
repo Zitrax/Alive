@@ -13,6 +13,7 @@ import datetime
 import time
 import os
 import stat
+import re
 
 import smtplib
 from email.mime.text import MIMEText
@@ -143,6 +144,32 @@ class Alive:
         if not (self.options.TEST or self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()
             return False
+
+        # Lock such that several instances does not work with the same config file simultaneously
+        lockfilename = self.options.CONFIGFILE + "_lock"
+        if os.path.exists(lockfilename):
+            self.write("%s%s%s" % (Fore.YELLOW, "Lock file '%s' exists\n" % lockfilename, Fore.RESET))
+            # Read pid from lock file
+            lockfile = open(lockfilename)
+            pid = lockfile.readline()
+            lockfile.close()
+            if re.match('\d+',pid):
+                if int(pid) == os.getpid():
+                    self.write("We have a lockfile for ourself, ignoring\n")
+                elif os.path.exists("/proc/" + pid):
+                    self.write("%s%s%s" % (Fore.RED, "Another process (%s) is still alive, aborting.\n" % pid, Fore.RESET))
+                    sys.exit(1)
+                else:
+                    self.write("%s%s%s" % (Fore.YELLOW, "Warning - we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n", Fore.RESET))
+                    os.remove(lockfilename)
+            else:
+                self.write("The lockfile did not contain a valid pid. Please check it manually. Aborting.")
+                sys.exit(1)
+
+        # We are not locked, then create our lockfile
+        lockfile = open(lockfilename,'w')
+        lockfile.write("%s" % os.getpid())
+        lockfile.close()
 
         return True
 
@@ -421,11 +448,12 @@ def main():
                     print url
             else:
                 alive.write("No URLs in the config file '%s'" % alive.options.CONFIGFILE)
-            return
+        else:
+            alive.check_urls(config, urls)
+            alive.write_config(config)
 
-        alive.check_urls(config, urls)
-        alive.write_config(config)
-
+    lockfilename = alive.options.CONFIGFILE + "_lock"
+    os.remove(lockfilename)
 
 if __name__ == "__main__":
     main()
