@@ -5,7 +5,6 @@ with mail notifications when the site goes up or down.
 """
 
 import subprocess
-import shlex
 import sys
 from optparse import OptionParser
 import ConfigParser
@@ -17,9 +16,6 @@ import re
 
 import smtplib
 from email.mime.text import MIMEText
-
-sys.path.append(os.path.join(os.path.dirname(__file__),"colorama"))
-from colorama import Fore
 
 class Site:
     """Class that handles one site to check"""
@@ -87,7 +83,18 @@ class Site:
             except OSError:
                 pass
             if ret:
-                self.__alive.write("%sWARNING -  could not run '%s'%s\n" % (Fore.YELLOW, command, Fore.RESET))
+                self.__alive.write("WARNING -  could not run '%s'\n" % command,Color.YELLOW);
+
+class Color:
+    BLACK   = '\033[30m'
+    RED     = '\033[31m'
+    GREEN   = '\033[32m'
+    YELLOW  = '\033[33m'
+    BLUE    = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN    = '\033[36m'
+    WHITE   = '\033[37m'
+    RESET   = '\033[39m'
 
 class Alive:
     """
@@ -108,6 +115,7 @@ class Alive:
 
         parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
         parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all prints")
+        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True, help="Don't output colored text")
         parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
         parser.add_option("-f", "--from", dest="FROM", help="from email address")
         parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
@@ -126,17 +134,17 @@ class Alive:
 
             mod = os.stat(file_name).st_mode
             if mod & stat.S_IRGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group readable\n" % file_name, Fore.RESET) )
+                self.write( "Warning - %s is group readable\n" % file_name, Color.YELLOW)
             if mod & stat.S_IXGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group executable\n" % file_name, Fore.RESET))
+                self.write( "Warning - %s is group executable\n" % file_name, Color.YELLOW)
             if mod & stat.S_IWGRP:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is group writable\n" % file_name, Fore.RESET))
+                self.write( "Warning - %s is group writable\n" % file_name, Color.YELLOW)
             if mod & stat.S_IROTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other readable\n" % file_name, Fore.RESET))
+                self.write( "Warning - %s is other readable\n" % file_name, Color.YELLOW)
             if mod & stat.S_IXOTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other executable\n" % file_name, Fore.RESET))
+                self.write( "Warning - %s is other executable\n" % file_name, Color.YELLOW)
             if mod & stat.S_IWOTH:
-                self.write( "%s%s%s" % (Fore.YELLOW, "Warning - %s is other writable\n" % file_name, Fore.RESET))
+                self.write( "Warning - %s is other writable\n" % file_name, Color.YELLOW)
 
         permission_check(sys.argv[0])
         permission_check(self.options.CONFIGFILE)
@@ -148,7 +156,7 @@ class Alive:
         # Lock such that several instances does not work with the same config file simultaneously
         lockfilename = self.options.CONFIGFILE + "_lock"
         if os.path.exists(lockfilename):
-            self.write("%s%s%s" % (Fore.YELLOW, "Lock file '%s' exists\n" % lockfilename, Fore.RESET))
+            self.write("Lock file '%s' exists\n" % lockfilename, Color.YELLOW)
             # Read pid from lock file
             lockfile = open(lockfilename)
             pid = lockfile.readline()
@@ -157,10 +165,10 @@ class Alive:
                 if int(pid) == os.getpid():
                     self.write("We have a lockfile for ourself, ignoring\n")
                 elif os.path.exists("/proc/" + pid):
-                    self.write("%s%s%s" % (Fore.RED, "Another process (%s) is still alive, aborting.\n" % pid, Fore.RESET))
+                    self.write("Another process (%s) is still alive, aborting.\n" % pid)
                     sys.exit(1)
                 else:
-                    self.write("%s%s%s" % (Fore.YELLOW, "Warning - we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n", Fore.RESET))
+                    self.write("Warning - we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n", Color.YELLOW)
                     os.remove(lockfilename)
             else:
                 self.write("The lockfile did not contain a valid pid. Please check it manually. Aborting.")
@@ -173,11 +181,15 @@ class Alive:
 
         return True
 
-    def write(self, text):
+    def write(self, text, color=None):
         """Writes the string only if not in quiet mode"""
+        if self.options.COLOR and color:
+            sys.stdout.write(color)
         if not self.options.QUIET:
             sys.stdout.write(text)
-            sys.stdout.flush()
+        if self.options.COLOR and color:
+            sys.stdout.write(Color.RESET)
+        sys.stdout.flush()
 
     def check_urls(self, config, urls):
         """Will go through the url list and check if they are up"""
@@ -212,14 +224,14 @@ class Alive:
 
         if down:
             state = "down"
-            color = Fore.RED
+            color = Color.RED
             space = ""
         else:
             state = "up"
-            color = Fore.GREEN
+            color = Color.GREEN
             space = "  "
 
-        self.write( "%s%s%s%s%s" % (color, space, (state_pos-len(site.get_url()))*" ", state, Fore.RESET))
+        self.write( "%s%s%s" % (space, (state_pos-len(site.get_url()))*" ", state), color)
 
         if site.get_new():
             self.write( " ( New URL" )
@@ -302,7 +314,7 @@ class TestAlive(unittest.TestCase):
             pass
 
     def test_empty_config(self):
-        sys.argv = [sys.argv[0], "-c", self.configfile, "-l"]
+        sys.argv = [sys.argv[0], "-c", self.configfile, "-l", "-n"]
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
         self.assertEqual(len(config.sections()), 0)
@@ -447,7 +459,7 @@ def main():
                 for url in config.sections():
                     print url
             else:
-                alive.write("No URLs in the config file '%s'" % alive.options.CONFIGFILE)
+                alive.write("No URLs in the config file '%s'\n" % alive.options.CONFIGFILE)
         else:
             alive.check_urls(config, urls)
             alive.write_config(config)
