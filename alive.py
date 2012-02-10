@@ -413,6 +413,30 @@ class TestAlive(unittest.TestCase):
         self.assertTrue(os.path.exists(trigger_file))
         os.remove(trigger_file)
 
+    def test_dual_down_trigger(self):
+        trigger_file = "down_trigger"
+        trigger_file_2 = "down_trigger_2"
+        url = "www.afwjkefnwejknfwkejfnwkejnfke.com"
+        # Remove any eventual old file
+        if os.path.exists(trigger_file):
+            os.remove(trigger_file)
+        if os.path.exists(trigger_file_2):
+            os.remove(trigger_file_2)
+        # First create a site object with an invalid url and set it to be up
+        site = self.get_a_site(url)
+        site.set_down(False)
+        config = site.get_config()
+        # Now add a trigger
+        config[0].set(url, "down_trigger", "touch %s; touch %s" % (trigger_file,trigger_file_2))
+        self.alive.write_config(config[0])
+        self.url_test(url, False)
+        # Check if trigger file was created
+        self.assertTrue(os.path.exists(trigger_file))
+        os.remove(trigger_file)
+        self.assertTrue(os.path.exists(trigger_file_2))
+        os.remove(trigger_file_2)
+
+
     def test_known(self):
         # First just add two urls to the config file
         url_up   = "www.google.com"
