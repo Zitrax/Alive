@@ -307,7 +307,7 @@ class TestAlive(unittest.TestCase):
         except:
             pass
 
-    def __del__(self):
+    def tearDown(self):
         try:
             os.remove(self.configfile)
         except:
@@ -472,8 +472,8 @@ def main():
 
     if alive.options.TEST:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestAlive)
-
         unittest.TextTestRunner(verbosity=2).run(suite)
+        os.remove("unittest_test_config" + "_lock")
     else:
         (config, urls) = alive.setup()
 
