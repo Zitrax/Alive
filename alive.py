@@ -83,7 +83,7 @@ class Site:
             except OSError:
                 pass
             if ret:
-                self.__alive.write("WARNING -  could not run '%s'\n" % command,Color.YELLOW);
+                self.__alive.write_warn("could not run '%s'\n" % command,Color.YELLOW);
 
 class Color:
     BLACK   = '\033[30m'
@@ -114,7 +114,7 @@ class Alive:
         """)
 
         parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
-        parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all prints")
+        parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
         parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True, help="Don't output colored text")
         parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
         parser.add_option("-f", "--from", dest="FROM", help="from email address")
@@ -134,17 +134,17 @@ class Alive:
 
             mod = os.stat(file_name).st_mode
             if mod & stat.S_IRGRP:
-                self.write( "Warning - %s is group readable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is group readable\n" % file_name)
             if mod & stat.S_IXGRP:
-                self.write( "Warning - %s is group executable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is group executable\n" % file_name)
             if mod & stat.S_IWGRP:
-                self.write( "Warning - %s is group writable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is group writable\n" % file_name)
             if mod & stat.S_IROTH:
-                self.write( "Warning - %s is other readable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is other readable\n" % file_name)
             if mod & stat.S_IXOTH:
-                self.write( "Warning - %s is other executable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is other executable\n" % file_name)
             if mod & stat.S_IWOTH:
-                self.write( "Warning - %s is other writable\n" % file_name, Color.YELLOW)
+                self.write_warn( "%s is other writable\n" % file_name)
 
         permission_check(sys.argv[0])
         permission_check(self.options.CONFIGFILE)
@@ -156,7 +156,7 @@ class Alive:
         # Lock such that several instances does not work with the same config file simultaneously
         lockfilename = self.options.CONFIGFILE + "_lock"
         if os.path.exists(lockfilename):
-            self.write("Lock file '%s' exists\n" % lockfilename, Color.YELLOW)
+            self.write("Lock file '%s' exists\n" % lockfilename)
             # Read pid from lock file
             lockfile = open(lockfilename)
             pid = lockfile.readline()
@@ -165,13 +165,13 @@ class Alive:
                 if int(pid) == os.getpid():
                     self.write("We have a lockfile for ourself, ignoring\n")
                 elif os.path.exists("/proc/" + pid):
-                    self.write("Another process (%s) is still alive, aborting.\n" % pid)
+                    self.write_warn("Another process (%s) is still alive, aborting.\n" % pid)
                     sys.exit(1)
                 else:
-                    self.write("Warning - we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n", Color.YELLOW)
+                    self.write_warn("we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n")
                     os.remove(lockfilename)
             else:
-                self.write("The lockfile did not contain a valid pid. Please check it manually. Aborting.")
+                self.write_warn("The lockfile did not contain a valid pid. Please check it manually. Aborting.")
                 sys.exit(1)
 
         # We are not locked, then create our lockfile
@@ -190,6 +190,15 @@ class Alive:
         if self.options.COLOR and color:
             sys.stdout.write(Color.RESET)
         sys.stdout.flush()
+
+    def write_warn(self, text, color=Color.YELLOW):
+        """Writes a string prefixed by Warning: to stderr"""
+        if self.options.COLOR and color:
+            sys.stderr.write(color)
+        sys.stderr.write("Warning: %s" % text)
+        if self.options.COLOR and color:
+            sys.stderr.write(Color.RESET)
+        sys.stderr.flush()
 
     def check_urls(self, config, urls):
         """Will go through the url list and check if they are up"""
@@ -276,6 +285,7 @@ class Alive:
         # Write the configuration file
         with open( self.options.CONFIGFILE, 'wb') as configfile:
             config.write(configfile)
+            os.chmod(self.options.CONFIGFILE, stat.S_IRUSR | stat.S_IWUSR)
 
     def setup(self):
         """Read in the config file and URLs"""
@@ -314,7 +324,7 @@ class TestAlive(unittest.TestCase):
             pass
 
     def test_empty_config(self):
-        sys.argv = [sys.argv[0], "-c", self.configfile, "-l", "-n"]
+        sys.argv = [sys.argv[0], "-c", self.configfile, "-l"]
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
         self.assertEqual(len(config.sections()), 0)
