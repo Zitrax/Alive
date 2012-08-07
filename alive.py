@@ -13,9 +13,23 @@ import time
 import os
 import stat
 import re
+import threading
 
 import smtplib
 from email.mime.text import MIMEText
+
+class SiteThread(threading.Thread):
+    """Manages one site in a thread"""
+
+    def __init__(self, site):
+        threading.Thread.__init__(self)
+        self.__site = site
+
+    def run(self):
+        self.__site.get_res()
+
+    def get_site(self):
+        return self.__site
 
 class Site:
     """Class that handles one site to check"""
@@ -25,6 +39,7 @@ class Site:
         self.__url = url
         self.__config = config
         self.__alive = alive
+        self.__res = None
         if not config[0].has_section( url ):
             config[0].add_section( url )
             self.__new = True
@@ -68,6 +83,17 @@ class Site:
     def get_config(self):
         return self.__config
 
+    def get_res(self):
+        if self.__res is None:
+            self.check_alive()
+        return self.__res
+
+    def check_alive(self):
+        wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", self.get_url()]
+        self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
+        wget = subprocess.Popen( args=wget_args )
+        self.__res = wget.wait()
+
     def activate_triggers(self, down=False):
         """When site switch state it can have some triggers that should be activated"""
         command = ""
@@ -83,7 +109,7 @@ class Site:
             except OSError:
                 pass
             if ret:
-                self.__alive.write_warn("could not run '%s'\n" % command,Color.YELLOW);
+                self.__alive.write_warn("could not run '%s'\n" % command, Color.YELLOW)
 
 class Color:
     BLACK   = '\033[30m'
@@ -161,7 +187,7 @@ class Alive:
             lockfile = open(lockfilename)
             pid = lockfile.readline()
             lockfile.close()
-            if re.match('\d+',pid):
+            if re.match('\d+', pid):
                 if int(pid) == os.getpid():
                     self.write("We have a lockfile for ourself, ignoring\n")
                 elif os.path.exists("/proc/" + pid):
@@ -181,12 +207,24 @@ class Alive:
 
         return True
 
-    def write(self, text, color=None):
+    def write(self, text, color=Color.CYAN):
         """Writes the string only if not in quiet mode"""
         if self.options.COLOR and color:
             sys.stdout.write(color)
         if not self.options.QUIET:
             sys.stdout.write(text)
+        if self.options.COLOR and color:
+            sys.stdout.write(Color.RESET)
+        sys.stdout.flush()
+
+    def write_debug(self, text, color=None):
+        """Writes a string prefixed by Debug: only if in debug mode"""
+        if not self.options.DEBUG:
+            return
+        if self.options.COLOR and color:
+            sys.stdout.write(color)
+        if not self.options.QUIET:
+            sys.stdout.write("Debug: " + text)
         if self.options.COLOR and color:
             sys.stdout.write(Color.RESET)
         sys.stdout.flush()
@@ -213,14 +251,17 @@ class Alive:
             if len(site.get_url()) > state_pos:
                 state_pos = len(site.get_url())
 
+        threads = []
         for site in sites:
+            thread = SiteThread(site)
+            threads.append(thread)
+            thread.start()
 
-            wget = subprocess.Popen( args=["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", site.get_url()] )
-
-            self.write( "Trying %s... " % site.get_url() )
-
-            res = wget.wait()
-
+        for thread in threads:
+            thread.join()
+            site = thread.get_site()
+            res = site.get_res()
+            self.write( "Result for %s: " % site.get_url() )
             if res and res != 6:
                 self.report( site, True, state_pos )
             else:
@@ -344,7 +385,7 @@ class TestAlive(unittest.TestCase):
             self.assertTrue(config.getboolean(url, "Down"))
 
     def test_google(self):
-        self.url_test("www.google.com", True)
+        self.url_test("www.google.no", True)
 
     def test_down(self):
         self.url_test("www.ifnvernieunviereev.com", False)
@@ -389,7 +430,7 @@ class TestAlive(unittest.TestCase):
 
     def test_up_trigger(self):
         trigger_file = "up_trigger"
-        url = "www.google.com"
+        url = "www.google.no"
         # Remove any eventual old file
         if os.path.exists(trigger_file):
             os.remove(trigger_file)
@@ -437,7 +478,7 @@ class TestAlive(unittest.TestCase):
         site.set_down(False)
         config = site.get_config()
         # Now add a trigger
-        config[0].set(url, "down_trigger", "touch %s; touch %s" % (trigger_file,trigger_file_2))
+        config[0].set(url, "down_trigger", "touch %s; touch %s" % (trigger_file, trigger_file_2))
         self.alive.write_config(config[0])
         self.url_test(url, False)
         # Check if trigger file was created
@@ -449,7 +490,7 @@ class TestAlive(unittest.TestCase):
 
     def test_known(self):
         # First just add two urls to the config file
-        url_up   = "www.google.com"
+        url_up   = "www.google.no"
         url_down = "aefasdfasdfopj"
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
