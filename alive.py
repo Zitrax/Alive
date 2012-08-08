@@ -93,12 +93,12 @@ class Site:
         return self.__res
 
     def check_alive(self):
-        start = time.clock()
+        start = time.time()
         wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", self.get_url()]
         self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
         wget = subprocess.Popen( args=wget_args )
         self.__res = wget.wait()
-        self.__time = (time.clock() - start)
+        self.__time = (time.time() - start)
 
     def activate_triggers(self, down=False):
         """When site switch state it can have some triggers that should be activated"""
