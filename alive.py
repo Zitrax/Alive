@@ -40,6 +40,7 @@ class Site:
         self.__config = config
         self.__alive = alive
         self.__res = None
+        self.__time = None
         if not config[0].has_section( url ):
             config[0].add_section( url )
             self.__new = True
@@ -77,6 +78,9 @@ class Site:
     def get_url(self):
         return self.__url
 
+    def get_time_spent(self):
+        return self.__time
+
     def get_new(self):
         return self.__new
 
@@ -89,10 +93,12 @@ class Site:
         return self.__res
 
     def check_alive(self):
+        start = time.clock()
         wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=20", "--tries=3", "--spider", self.get_url()]
         self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
         wget = subprocess.Popen( args=wget_args )
         self.__res = wget.wait()
+        self.__time = (time.clock() - start)
 
     def activate_triggers(self, down=False):
         """When site switch state it can have some triggers that should be activated"""
@@ -291,7 +297,7 @@ class Alive:
                 self.write( " since %s" % time.ctime(site.get_last_change()) )
         else:
             self.write( " ( State changed" )
-        self.write(")\n")
+        self.write(") Check took %.2f s\n" % site.get_time_spent())
 
         if not known_earlier:
             if self.options.TO:
