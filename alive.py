@@ -182,8 +182,9 @@ class Alive:
             if mod & stat.S_IWOTH:
                 self.write_warn( "%s is other writable\n" % file_name)
 
-        permission_check(sys.argv[0])
-        permission_check(self.options.CONFIGFILE)
+        if self.options.DEBUG:
+            permission_check(sys.argv[0])
+            permission_check(self.options.CONFIGFILE)
 
         if not (self.options.TEST or self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()
