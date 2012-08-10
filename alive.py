@@ -14,6 +14,7 @@ import os
 import stat
 import re
 import threading
+import Queue
 
 import smtplib
 from email.mime.text import MIMEText
@@ -21,12 +22,15 @@ from email.mime.text import MIMEText
 class SiteThread(threading.Thread):
     """Manages one site in a thread"""
 
+    results_queue = Queue.Queue()
+
     def __init__(self, site):
         threading.Thread.__init__(self)
         self.__site = site
 
     def run(self):
         self.__site.get_res()
+        SiteThread.results_queue.put(self.__site)
 
     def get_site(self):
         return self.__site
@@ -263,15 +267,18 @@ class Alive:
             threads.append(thread)
             thread.start()
 
-        for thread in threads:
-            thread.join()
-            site = thread.get_site()
+        for i in xrange(len(threads)):
+            site = SiteThread.results_queue.get()
             res = site.get_res()
             self.write( "Result for %s: " % site.get_url() )
             if res and res != 6:
                 self.report( site, True, state_pos )
             else:
                 self.report( site, False, state_pos )
+
+        # Just to be sure
+        for thread in threads:
+            thread.join()
 
     def report( self, site, down, state_pos ):
         """Report the state and eventual change"""
