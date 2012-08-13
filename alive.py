@@ -257,7 +257,7 @@ class Alive:
         for url in urls:
             sites += [Site(url, [config], self)]
 
-        state_pos = 30
+        state_pos = 20
         for site in sites:
             if len(site.get_url()) > state_pos:
                 state_pos = len(site.get_url())
@@ -271,7 +271,7 @@ class Alive:
         for i in xrange(len(threads)):
             site = SiteThread.results_queue.get()
             res = site.get_res()
-            self.write( "Result for %s: " % site.get_url() )
+            self.write( "[%d/%d] %s: " % (i+1, len(threads), site.get_url()) )
             if res and res != 6:
                 self.report( site, True, state_pos )
             else:
@@ -300,12 +300,12 @@ class Alive:
         if site.get_new():
             self.write( " ( New URL" )
         elif known_earlier:
-            self.write( " ( State already known" )
+            self.write( " ( Known" )
             if site.get_last_change():
                 self.write( " since %s" % time.ctime(site.get_last_change()) )
         else:
             self.write( " ( State changed" )
-        self.write(") Check took %.2f s\n" % site.get_time_spent())
+        self.write(" ) Check took %.2f s\n" % site.get_time_spent())
 
         if not known_earlier:
             if self.options.TO:
