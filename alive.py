@@ -19,6 +19,7 @@ import Queue
 import smtplib
 from email.mime.text import MIMEText
 
+
 class SiteThread(threading.Thread):
     """Manages one site in a thread"""
 
@@ -35,6 +36,7 @@ class SiteThread(threading.Thread):
     def get_site(self):
         return self.__site
 
+
 class Site:
     """Class that handles one site to check"""
 
@@ -45,25 +47,25 @@ class Site:
         self.__alive = alive
         self.__res = None
         self.__time = None
-        if not config[0].has_section( url ):
-            config[0].add_section( url )
+        if not config[0].has_section(url):
+            config[0].add_section(url)
             self.__new = True
         else:
             self.__new = False
         try:
-            self.__down = config[0].getboolean( url, "Down" )
+            self.__down = config[0].getboolean(url, "Down")
         except ValueError:
             self.__down = False
         except ConfigParser.NoOptionError:
             self.__down = False
         try:
-            self.__last_change = config[0].getint( url, "Time" )
+            self.__last_change = config[0].getint(url, "Time")
         except ValueError:
             self.__last_change = int(time.time())
-            config[0].set( url, "Time", self.__last_change )
+            config[0].set(url, "Time", self.__last_change)
         except ConfigParser.NoOptionError:
             self.__last_change = int(time.time())
-            config[0].set( url, "Time", self.__last_change )
+            config[0].set(url, "Time", self.__last_change)
 
     def get_last_change(self):
         return self.__last_change
@@ -100,7 +102,7 @@ class Site:
         start = time.time()
         wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=40", "--tries=3", "--spider", self.get_url()]
         self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
-        wget = subprocess.Popen( args=wget_args )
+        wget = subprocess.Popen(args=wget_args)
         self.__res = wget.wait()
         self.__time = (time.time() - start)
 
@@ -115,11 +117,12 @@ class Site:
         if len(command):
             ret = 1
             try:
-                ret = subprocess.call( command, shell=True )
+                ret = subprocess.call(command, shell=True)
             except OSError:
                 pass
             if ret:
                 self.__alive.write_warn("could not run '%s'\n" % command, Color.YELLOW)
+
 
 class Color:
     BLACK   = '\033[30m'
@@ -131,6 +134,7 @@ class Color:
     CYAN    = '\033[36m'
     WHITE   = '\033[37m'
     RESET   = '\033[39m'
+
 
 class Alive:
     """
@@ -144,10 +148,7 @@ class Alive:
     def parse_command_line_options(self):
         """Will parse all self.options given on the command line and exit if required arguments are not given"""
 
-        parser = OptionParser(usage="%prog [options]", description=
-        """This script takes as input one or several URLs and checks with wget if
-        they can be accessed.
-        """)
+        parser = OptionParser(usage="%prog [options]", description="This script takes as input one or several URLs and checks with wget if they can be accessed.")
 
         parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
         parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
@@ -169,17 +170,17 @@ class Alive:
 
             mod = os.stat(file_name).st_mode
             if mod & stat.S_IRGRP:
-                self.write_warn( "%s is group readable\n" % file_name)
+                self.write_warn("%s is group readable\n" % file_name)
             if mod & stat.S_IXGRP:
-                self.write_warn( "%s is group executable\n" % file_name)
+                self.write_warn("%s is group executable\n" % file_name)
             if mod & stat.S_IWGRP:
-                self.write_warn( "%s is group writable\n" % file_name)
+                self.write_warn("%s is group writable\n" % file_name)
             if mod & stat.S_IROTH:
-                self.write_warn( "%s is other readable\n" % file_name)
+                self.write_warn("%s is other readable\n" % file_name)
             if mod & stat.S_IXOTH:
-                self.write_warn( "%s is other executable\n" % file_name)
+                self.write_warn("%s is other executable\n" % file_name)
             if mod & stat.S_IWOTH:
-                self.write_warn( "%s is other writable\n" % file_name)
+                self.write_warn("%s is other writable\n" % file_name)
 
         if self.options.DEBUG:
             permission_check(sys.argv[0])
@@ -211,7 +212,7 @@ class Alive:
                 sys.exit(1)
 
         # We are not locked, then create our lockfile
-        lockfile = open(lockfilename,'w')
+        lockfile = open(lockfilename, 'w')
         lockfile.write("%s" % os.getpid())
         lockfile.close()
 
@@ -270,17 +271,17 @@ class Alive:
         for i in xrange(len(threads)):
             site = SiteThread.results_queue.get()
             res = site.get_res()
-            self.write( "[%d/%d] %s: " % (i+1, len(threads), site.get_url()) )
+            self.write("[%d/%d] %s: " % (i + 1, len(threads), site.get_url()))
             if res and res != 6:
-                self.report( site, True, state_pos )
+                self.report(site, True, state_pos)
             else:
-                self.report( site, False, state_pos )
+                self.report(site, False, state_pos)
 
         # Just to be sure
         for thread in threads:
             thread.join()
 
-    def report( self, site, down, state_pos ):
+    def report(self, site, down, state_pos):
         """Report the state and eventual change"""
 
         known_earlier = down == site.get_down()
@@ -294,21 +295,21 @@ class Alive:
             color = Color.GREEN
             space = "  "
 
-        self.write( "%s%s%s" % (space, (state_pos-len(site.get_url()))*" ", state), color)
+        self.write("%s%s%s" % (space, (state_pos - len(site.get_url())) * " ", state), color)
 
         if site.get_new():
-            self.write( " ( New URL" )
+            self.write(" ( New URL")
         elif known_earlier:
-            self.write( " ( Known" )
+            self.write(" ( Known")
             if site.get_last_change():
-                self.write( " since %s" % time.ctime(site.get_last_change()) )
+                self.write(" since %s" % time.ctime(site.get_last_change()))
         else:
-            self.write( " ( State changed" )
-        self.write(" ) Check took %.2f s\n" % site.get_time_spent())
+            self.write(" ( State changed")
+        self.write(") Check took %.2f s\n" % site.get_time_spent())
 
         if not known_earlier:
             if self.options.TO:
-                if( not self.send_mail( "%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()) ) ):
+                if(not self.send_mail("%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()))):
                     return
             site.activate_triggers(down)
             site.set_last_change(int(time.time()))
@@ -317,7 +318,7 @@ class Alive:
 
     def send_mail(self, subject, body):
         """Send a mail using smtp server on localhost"""
-        self.write( "Mailing...")
+        self.write("Mailing...")
         msg = MIMEText(body)
         msg['Subject'] = subject
         if self.options.FROM:
@@ -337,7 +338,7 @@ class Alive:
 
     def write_config(self, config):
         # Write the configuration file
-        with open( self.options.CONFIGFILE, 'wb') as configfile:
+        with open(self.options.CONFIGFILE, 'wb') as configfile:
             config.write(configfile)
             os.chmod(self.options.CONFIGFILE, stat.S_IRUSR | stat.S_IWUSR)
 
@@ -348,12 +349,13 @@ class Alive:
             urls += self.options.URL.split()
 
         config = ConfigParser.RawConfigParser()
-        config.read( self.options.CONFIGFILE )
+        config.read(self.options.CONFIGFILE)
 
         if self.options.KNOWN:
             urls += config.sections()
 
         return (config, urls)
+
 
 def main():
     """main"""

@@ -9,6 +9,7 @@ import os
 
 from alive import *
 
+
 class TestAlive(unittest.TestCase):
 
     def setUp(self):
@@ -81,9 +82,9 @@ class TestAlive(unittest.TestCase):
         # last_change should not be in the future
         self.assertTrue(site.get_last_change() < time.time())
         site.set_last_change(0)
-        self.assertTrue(site.get_last_change()==0)
+        self.assertTrue(site.get_last_change() == 0)
         site.set_last_change(1500)
-        self.assertTrue(site.get_last_change()==1500)
+        self.assertTrue(site.get_last_change() == 1500)
 
     def test_set_get_url(self):
         site = self.get_a_site()
@@ -152,10 +153,9 @@ class TestAlive(unittest.TestCase):
         self.assertTrue(os.path.exists(trigger_file_2))
         os.remove(trigger_file_2)
 
-
     def test_known(self):
         # First just add two urls to the config file
-        url_up   = "www.google.no"
+        url_up = "www.google.no"
         url_down = "aefasdfasdfopj"
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
@@ -177,6 +177,7 @@ class TestAlive(unittest.TestCase):
         self.assertTrue(config.getboolean(url_down, "Down"))
 
     # TODO: Should check the Time value, and command line options
+
 
 def main():
     """main"""
