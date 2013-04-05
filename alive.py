@@ -268,10 +268,11 @@ class Alive:
             threads.append(thread)
             thread.start()
 
-        for i in xrange(len(threads)):
+        tc = len(threads)
+        for i in xrange(tc):
             site = SiteThread.results_queue.get()
             res = site.get_res()
-            self.write("[%d/%d] %s: " % (i + 1, len(threads), site.get_url()))
+            self.write(("[{0:0%dd}/{1}] {2}: " % len(str(tc))).format(i + 1, tc, site.get_url()))
             if res and res != 6:
                 self.report(site, True, state_pos)
             else:
