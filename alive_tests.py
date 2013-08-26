@@ -112,6 +112,24 @@ class TestAlive(unittest.TestCase):
         self.assertTrue(os.path.exists(trigger_file))
         os.remove(trigger_file)
 
+    def test_up_trigger_pipe(self):
+        trigger_file = "up_trigger"
+        url = "www.google.no"
+        # Remove any eventual old file
+        if os.path.exists(trigger_file):
+            os.remove(trigger_file)
+        # First create a site object for which google is down
+        site = self.get_a_site(url)
+        site.set_down(True)
+        config = site.get_config()
+        # Now add a trigger
+        config[0].set(url, "up_trigger", "ls|wc > %s" % trigger_file)
+        self.alive.write_config(config[0])
+        self.url_test(url, True)
+        # Check if trigger file was created
+        self.assertTrue(os.path.exists(trigger_file))
+        os.remove(trigger_file)
+
     def test_down_trigger(self):
         trigger_file = "down_trigger"
         url = "www.afwjkefnwejknfwkejfnwkejnfke.com"
