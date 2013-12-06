@@ -7,14 +7,24 @@ with mail notifications when the site goes up or down.
 import subprocess
 import sys
 from optparse import OptionParser
-import ConfigParser
 import datetime
 import time
 import os
 import stat
 import re
 import threading
-import Queue
+
+# Python 2 and 3 support
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
+
 
 import smtplib
 from email.mime.text import MIMEText
@@ -23,7 +33,7 @@ from email.mime.text import MIMEText
 class SiteThread(threading.Thread):
     """Manages one site in a thread"""
 
-    results_queue = Queue.Queue()
+    results_queue = queue.Queue()
 
     def __init__(self, site):
         threading.Thread.__init__(self)
@@ -53,32 +63,35 @@ class Site:
         else:
             self.__new = False
         try:
-            self.__down = config[0].getboolean(url, "Down")
+            self.__down = config[0].getboolean(url, "down")
         except ValueError:
             self.__down = False
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             self.__down = False
         try:
-            self.__last_change = config[0].getint(url, "Time")
-        except ValueError:
+            self.__last_change = config[0].getint(url, "time")
+        except (ValueError, configparser.NoOptionError):
             self.__last_change = int(time.time())
-            config[0].set(url, "Time", self.__last_change)
-        except ConfigParser.NoOptionError:
-            self.__last_change = int(time.time())
-            config[0].set(url, "Time", self.__last_change)
+            self.set_config(url, "time", self.__last_change)
+
+    def set_config(self, section, key, val):
+        if sys.hexversion < 0x03000000:
+            self.__config[0].set(section, key, val)
+        else:
+            self.__config[0][section][key] = str(val)
 
     def get_last_change(self):
         return self.__last_change
 
     def set_last_change(self, new_time):
-        self.__config[0].set(self.__url, "Time", new_time)
+        self.set_config(self.__url, "time", new_time)
         self.__last_change = new_time
 
     def get_down(self):
         return self.__down
 
     def set_down(self, down):
-        self.__config[0].set(self.__url, "Down", "yes" if down else "no")
+        self.set_config(self.__url, "down", "yes" if down else "no")
         self.__down = down
 
     def get_url(self):
@@ -100,7 +113,8 @@ class Site:
 
     def check_alive(self):
         start = time.time()
-        wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=40", "--tries=3", "--spider", self.get_url()]
+        wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=40", "--tries=3", "--spider",
+                     self.get_url()]
         self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
         wget = subprocess.Popen(args=wget_args)
         self.__res = wget.wait()
@@ -125,15 +139,15 @@ class Site:
 
 
 class Color:
-    BLACK   = '\033[30m'
-    RED     = '\033[31m'
-    GREEN   = '\033[32m'
-    YELLOW  = '\033[33m'
-    BLUE    = '\033[34m'
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
     MAGENTA = '\033[35m'
-    CYAN    = '\033[36m'
-    WHITE   = '\033[37m'
-    RESET   = '\033[39m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    RESET = '\033[39m'
 
 
 class Alive:
@@ -148,16 +162,25 @@ class Alive:
     def parse_command_line_options(self):
         """Will parse all self.options given on the command line and exit if required arguments are not given"""
 
-        parser = OptionParser(usage="%prog [options]", description="This script takes as input one or several URLs and checks with wget if they can be accessed.")
+        parser = OptionParser(usage="%prog [options]",
+                              description=("This script takes as input one or several URLs "
+                                           "and checks with wget if they can be accessed."))
 
-        parser.add_option("-u", "--url", dest="URL", help="URL(s) to try to retrieve. You can write several URLs separated by space, but remember to quote the string.")
+        parser.add_option("-u", "--url", dest="URL",
+                          help=("URL(s) to try to retrieve. You can write several URLs separated "
+                                "by space, but remember to quote the string."))
         parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
-        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True, help="Don't output colored text")
+        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True,
+                          help="Don't output colored text")
         parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
         parser.add_option("-f", "--from", dest="FROM", help="from email address")
-        parser.add_option("-t", "--to", dest="TO", help="to email address - If specified an email will be sent to this address if the site is down")
-        parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg", help="The configuration file. By default this is alive.cfg in the current directory.")
-        parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true", help="Test all existing URLs in the cfg file.")
+        parser.add_option("-t", "--to", dest="TO",
+                          help=("to email address - If specified an email will "
+                                "be sent to this address if the site is down"))
+        parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg",
+                          help="The configuration file. By default this is alive.cfg in the current directory.")
+        parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true",
+                          help="Test all existing URLs in the cfg file.")
         parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
 
         (self.options, args) = parser.parse_args()
@@ -205,7 +228,8 @@ class Alive:
                     self.write_warn("Another process (%s) is still alive, aborting.\n" % pid)
                     sys.exit(1)
                 else:
-                    self.write_warn("we had a lock file but the process is no longer alive. Deleting lock file and will continue...\n")
+                    self.write_warn(("we had a lock file but the process is no longer alive. "
+                                     "Deleting lock file and will continue...\n"))
                     os.remove(lockfilename)
             else:
                 self.write_warn("The lockfile did not contain a valid pid. Please check it manually. Aborting.")
@@ -269,7 +293,7 @@ class Alive:
             thread.start()
 
         tc = len(threads)
-        for i in xrange(tc):
+        for i in range(tc):
             site = SiteThread.results_queue.get()
             res = site.get_res()
             self.write(("[{0:0%dd}/{1}] {2}: " % len(str(tc))).format(i + 1, tc, site.get_url()))
@@ -310,7 +334,8 @@ class Alive:
 
         if not known_earlier:
             if self.options.TO:
-                if(not self.send_mail("%s %s" % (site.get_url(), state), "Site is %s at %s" % (state, datetime.datetime.now().ctime()))):
+                if not self.send_mail("%s %s" % (site.get_url(), state),
+                                      "Site is %s at %s" % (state, datetime.datetime.now().ctime())):
                     return
             site.activate_triggers(down)
             site.set_last_change(int(time.time()))
@@ -331,7 +356,7 @@ class Alive:
         try:
             smtp.connect()
         except:
-            print "Could not send email, do you have an SMTP server running on localhost?"
+            print("Could not send email, do you have an SMTP server running on localhost?")
             return False
         smtp.sendmail(self.options.FROM, [self.options.TO], msg.as_string())
         smtp.quit()
@@ -339,7 +364,7 @@ class Alive:
 
     def write_config(self, config):
         # Write the configuration file
-        with open(self.options.CONFIGFILE, 'wb') as configfile:
+        with open(self.options.CONFIGFILE, 'w') as configfile:
             config.write(configfile)
             os.chmod(self.options.CONFIGFILE, stat.S_IRUSR | stat.S_IWUSR)
 
@@ -349,13 +374,13 @@ class Alive:
         if self.options.URL:
             urls += self.options.URL.split()
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.ConfigParser()
         config.read(self.options.CONFIGFILE)
 
         if self.options.KNOWN:
             urls += config.sections()
 
-        return (config, urls)
+        return config, urls
 
 
 def main():
@@ -372,7 +397,7 @@ def main():
         if len(config.sections()):
             alive.write("Known URLs in the config file '%s':\n\n" % alive.options.CONFIGFILE)
             for url in config.sections():
-                print url
+                print(url)
         else:
             alive.write("No URLs in the config file '%s'\n" % alive.options.CONFIGFILE)
     else:
@@ -381,6 +406,7 @@ def main():
 
     lockfilename = alive.options.CONFIGFILE + "_lock"
     os.remove(lockfilename)
+
 
 if __name__ == "__main__":
     main()
