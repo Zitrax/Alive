@@ -47,7 +47,7 @@ class SiteThread(threading.Thread):
         return self.__site
 
 
-class Site:
+class Site(object):
     """Class that handles one site to check"""
 
     def __init__(self, url, config, alive):
@@ -138,7 +138,7 @@ class Site:
                 self.__alive.write_warn("could not run '%s'\n" % command, Color.YELLOW)
 
 
-class Color:
+class Color(object):
     BLACK = '\033[30m'
     RED = '\033[31m'
     GREEN = '\033[32m'
@@ -150,7 +150,7 @@ class Color:
     RESET = '\033[39m'
 
 
-class Alive:
+class Alive(object):
     """
     This class takes as input a URL and checks with wget if it can be accessed,
     with mail notifications when the site goes up or down.

@@ -35,6 +35,7 @@ class TestAlive(unittest.TestCase):
         self.alive.parse_command_line_options()
         (config, urls) = self.alive.setup()
         self.assertEqual(len(config.sections()), 0)
+        self.assertEqual([], urls)
 
     def url_test(self, url, should_be_up, count=1):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-u", url]
@@ -63,7 +64,7 @@ class TestAlive(unittest.TestCase):
     def get_a_site(self, url="www.test.com"):
         sys.argv = [sys.argv[0], "-c", self.configfile, "-q", "-k"]
         self.alive.parse_command_line_options()
-        (config, urls) = self.alive.setup()
+        (config, _) = self.alive.setup()
         return Site(url, [config], self.alive)
 
     def test_set_get_down_config(self):
