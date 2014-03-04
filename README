@@ -1,7 +1,7 @@
 Usage: alive.py [options]
 
-This script takes as input one or several URLs and checks with wget if
-they can be accessed.
+This script takes as input one or several URLs and checks with wget if they
+can be accessed.
 
 Options:
   -h, --help            show this help message and exit
@@ -18,3 +18,7 @@ Options:
                         in the current directory.
   -k, --test-known      Test all existing URLs in the cfg file.
   -l, --list            List known URLs in the config file.
+
+## Info
+
+* Static code analysis: [landscape.io](https://landscape.io/github/Zitrax/Alive/master)
