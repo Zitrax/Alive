@@ -24,3 +24,4 @@ Options:
 ## Info
 
 * Static code analysis: [landscape.io](https://landscape.io/github/Zitrax/Alive/master)
+* Continuous integration: [![Build Status](https://travis-ci.org/Zitrax/Alive.png?branch=master)](https://travis-ci.org/Zitrax/Alive)
