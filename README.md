@@ -1,3 +1,4 @@
+```
 Usage: alive.py [options]
 
 This script takes as input one or several URLs and checks with wget if they
@@ -18,6 +19,7 @@ Options:
                         in the current directory.
   -k, --test-known      Test all existing URLs in the cfg file.
   -l, --list            List known URLs in the config file.
+```
 
 ## Info
 
