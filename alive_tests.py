@@ -3,11 +3,12 @@
 Unit tests for alive.py
 """
 
-import unittest
-import sys
 import os
+import sys
+import time
+import unittest
 
-from alive import *
+from alive import Alive, Site
 
 
 class TestAlive(unittest.TestCase):
@@ -21,13 +22,13 @@ class TestAlive(unittest.TestCase):
         self.configfile = "unittest_test_config"
         try:
             os.remove(self.configfile)
-        except:
+        except OSError:
             pass
 
     def tearDown(self):
         try:
             os.remove(self.configfile)
-        except:
+        except OSError:
             pass
 
     def test_empty_config(self):

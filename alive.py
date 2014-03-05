@@ -4,15 +4,15 @@ This script takes as input a URL and checks with wget if it can be accessed,
 with mail notifications when the site goes up or down.
 """
 
-import subprocess
-import sys
 from optparse import OptionParser
 import datetime
-import time
 import os
-import stat
 import re
+import stat
+import subprocess
+import sys
 import threading
+import time
 
 # Python 2 and 3 support
 try:
@@ -218,9 +218,8 @@ class Alive(object):
         if os.path.exists(lockfilename):
             self.write("Lock file '%s' exists\n" % lockfilename)
             # Read pid from lock file
-            lockfile = open(lockfilename)
-            pid = lockfile.readline()
-            lockfile.close()
+            with open(lockfilename) as lockfile:
+                pid = lockfile.readline()
             if re.match('\d+', pid):
                 if int(pid) == os.getpid():
                     self.write("We have a lockfile for ourself, ignoring\n")
@@ -236,9 +235,8 @@ class Alive(object):
                 sys.exit(1)
 
         # We are not locked, then create our lockfile
-        lockfile = open(lockfilename, 'w')
-        lockfile.write("%s" % os.getpid())
-        lockfile.close()
+        with open(lockfilename, 'w') as lockfile:
+            lockfile.write("%s" % os.getpid())
 
         return True
 
@@ -355,7 +353,7 @@ class Alive(object):
             smtp.set_debuglevel(True)
         try:
             smtp.connect()
-        except:
+        except IOError:
             print("Could not send email, do you have an SMTP server running on localhost?")
             return False
         smtp.sendmail(self.options.FROM, [self.options.TO], msg.as_string())
