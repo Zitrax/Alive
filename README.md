@@ -25,3 +25,4 @@ Options:
 
 * Static code analysis: [![Code Quality](https://landscape.io/github/Zitrax/Alive/master/landscape.png)](https://landscape.io/github/Zitrax/Alive/master)
 * Continuous integration: [![Build Status](https://travis-ci.org/Zitrax/Alive.png?branch=master)](https://travis-ci.org/Zitrax/Alive)
+* Coverage: [![Coverage Status](https://coveralls.io/repos/Zitrax/Alive/badge.png)](https://coveralls.io/r/Zitrax/Alive)
