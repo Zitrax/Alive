@@ -5,6 +5,10 @@ python:
   - "3.2"
   - "3.3"
 # command to install dependencies
-# install: "pip install -r requirements.txt"
+install:
+  - pip install coveralls
 # command to run tests
-script: ./alive_tests.py
+script:
+  coverage run alive_tests.py test
+after_success:
+  coveralls
