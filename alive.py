@@ -150,6 +150,27 @@ class Color(object):
     RESET = '\033[39m'
 
 
+def permission_check(file_name):
+    """Check permissions"""
+
+    if not os.path.exists(file_name):
+        return
+
+    mod = os.stat(file_name).st_mode
+    if mod & stat.S_IRGRP:
+        self.write_warn("%s is group readable\n" % file_name)
+    if mod & stat.S_IXGRP:
+        self.write_warn("%s is group executable\n" % file_name)
+    if mod & stat.S_IWGRP:
+        self.write_warn("%s is group writable\n" % file_name)
+    if mod & stat.S_IROTH:
+        self.write_warn("%s is other readable\n" % file_name)
+    if mod & stat.S_IXOTH:
+        self.write_warn("%s is other executable\n" % file_name)
+    if mod & stat.S_IWOTH:
+        self.write_warn("%s is other writable\n" % file_name)
+
+
 class Alive(object):
     """
     This class takes as input a URL and checks with wget if it can be accessed,
@@ -166,26 +187,6 @@ class Alive(object):
                               description=("This script takes as input one or several URLs "
                                            "and checks with wget if they can be accessed."))
         (self.options, args) = self.add_options(parser).parse_args()
-
-        def permission_check(file_name):
-            """Check permissions"""
-
-            if not os.path.exists(file_name):
-                return
-
-            mod = os.stat(file_name).st_mode
-            if mod & stat.S_IRGRP:
-                self.write_warn("%s is group readable\n" % file_name)
-            if mod & stat.S_IXGRP:
-                self.write_warn("%s is group executable\n" % file_name)
-            if mod & stat.S_IWGRP:
-                self.write_warn("%s is group writable\n" % file_name)
-            if mod & stat.S_IROTH:
-                self.write_warn("%s is other readable\n" % file_name)
-            if mod & stat.S_IXOTH:
-                self.write_warn("%s is other executable\n" % file_name)
-            if mod & stat.S_IWOTH:
-                self.write_warn("%s is other writable\n" % file_name)
 
         if self.options.DEBUG:
             permission_check(sys.argv[0])
