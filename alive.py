@@ -165,25 +165,7 @@ class Alive(object):
         parser = OptionParser(usage="%prog [options]",
                               description=("This script takes as input one or several URLs "
                                            "and checks with wget if they can be accessed."))
-
-        parser.add_option("-u", "--url", dest="URL",
-                          help=("URL(s) to try to retrieve. You can write several URLs separated "
-                                "by space, but remember to quote the string."))
-        parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
-        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True,
-                          help="Don't output colored text")
-        parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
-        parser.add_option("-f", "--from", dest="FROM", help="from email address")
-        parser.add_option("-t", "--to", dest="TO",
-                          help=("to email address - If specified an email will "
-                                "be sent to this address if the site is down"))
-        parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg",
-                          help="The configuration file. By default this is alive.cfg in the current directory.")
-        parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true",
-                          help="Test all existing URLs in the cfg file.")
-        parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
-
-        (self.options, args) = parser.parse_args()
+        (self.options, args) = self.add_options(parser).parse_args()
 
         def permission_check(file_name):
             """Check permissions"""
@@ -239,6 +221,26 @@ class Alive(object):
             lockfile.write("%s" % os.getpid())
 
         return True
+
+    def add_options(self, parser):
+        parser.add_option("-u", "--url", dest="URL",
+                          help=("URL(s) to try to retrieve. You can write several URLs separated "
+                                "by space, but remember to quote the string."))
+        parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
+        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True,
+                          help="Don't output colored text")
+        parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
+        parser.add_option("-f", "--from", dest="FROM", help="from email address")
+        parser.add_option("-t", "--to", dest="TO",
+                          help=("to email address - If specified an email will "
+                                "be sent to this address if the site is down"))
+        parser.add_option("-c", "--config", dest="CONFIGFILE", default="alive.cfg",
+                          help="The configuration file. By default this is alive.cfg in the current directory.")
+        parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true",
+                          help="Test all existing URLs in the cfg file.")
+        parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
+        return parser
+
 
     def write(self, text, color=Color.CYAN):
         """Writes the string only if not in quiet mode"""
