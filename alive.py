@@ -150,27 +150,6 @@ class Color(object):
     RESET = '\033[39m'
 
 
-def permission_check(file_name):
-    """Check permissions"""
-
-    if not os.path.exists(file_name):
-        return
-
-    mod = os.stat(file_name).st_mode
-    if mod & stat.S_IRGRP:
-        self.write_warn("%s is group readable\n" % file_name)
-    if mod & stat.S_IXGRP:
-        self.write_warn("%s is group executable\n" % file_name)
-    if mod & stat.S_IWGRP:
-        self.write_warn("%s is group writable\n" % file_name)
-    if mod & stat.S_IROTH:
-        self.write_warn("%s is other readable\n" % file_name)
-    if mod & stat.S_IXOTH:
-        self.write_warn("%s is other executable\n" % file_name)
-    if mod & stat.S_IWOTH:
-        self.write_warn("%s is other writable\n" % file_name)
-
-
 class Alive(object):
     """
     This class takes as input a URL and checks with wget if it can be accessed,
@@ -179,6 +158,26 @@ class Alive(object):
 
     def __init__(self):
         self.options = None
+
+    def permission_check(self, file_name):
+        """Check permissions"""
+
+        if not os.path.exists(file_name):
+            return
+
+        mod = os.stat(file_name).st_mode
+        if mod & stat.S_IRGRP:
+            self.write_warn("%s is group readable\n" % file_name)
+        if mod & stat.S_IXGRP:
+            self.write_warn("%s is group executable\n" % file_name)
+        if mod & stat.S_IWGRP:
+            self.write_warn("%s is group writable\n" % file_name)
+        if mod & stat.S_IROTH:
+            self.write_warn("%s is other readable\n" % file_name)
+        if mod & stat.S_IXOTH:
+            self.write_warn("%s is other executable\n" % file_name)
+        if mod & stat.S_IWOTH:
+            self.write_warn("%s is other writable\n" % file_name)
 
     def parse_command_line_options(self):
         """Will parse all self.options given on the command line and exit if required arguments are not given"""
@@ -189,8 +188,8 @@ class Alive(object):
         (self.options, args) = self.add_options(parser).parse_args()
 
         if self.options.DEBUG:
-            permission_check(sys.argv[0])
-            permission_check(self.options.CONFIGFILE)
+            self.permission_check(sys.argv[0])
+            self.permission_check(self.options.CONFIGFILE)
 
         if not (self.options.URL or self.options.KNOWN or self.options.LIST) or len(args):
             parser.print_help()

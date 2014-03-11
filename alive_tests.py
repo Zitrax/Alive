@@ -8,7 +8,7 @@ import sys
 import time
 import unittest
 
-from alive import Alive, Site, permission_check
+from alive import Alive, Site
 from tempfile import NamedTemporaryFile
 
 
@@ -199,10 +199,10 @@ class TestAlive(unittest.TestCase):
 
     def test_permission_check_existing(self):
         with NamedTemporaryFile() as tmp:
-            permission_check(tmp.name)
+            self.alive.permission_check(tmp.name)
 
     def test_permission_check_non_existing(self):
-        permission_check("pqaiweufhnqa")
+        self.alive.permission_check("pqaiweufhnqa")
 
     # TODO: Should check the Time value, and command line options
 
