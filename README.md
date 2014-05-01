@@ -19,6 +19,9 @@ Options:
                         in the current directory.
   -k, --test-known      Test all existing URLs in the cfg file.
   -l, --list            List known URLs in the config file.
+  -s, --strict          Strict ordering. Output can be slightly slower but
+                        guarantees that the site with shortest response time
+                        is printed first.
 ```
 
 ## Info

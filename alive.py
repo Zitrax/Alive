@@ -33,7 +33,7 @@ from email.mime.text import MIMEText
 class SiteThread(threading.Thread):
     """Manages one site in a thread"""
 
-    results_queue = queue.Queue()
+    results_queue = queue.PriorityQueue()
 
     def __init__(self, site):
         threading.Thread.__init__(self)
@@ -57,6 +57,7 @@ class Site(object):
         self.__alive = alive
         self.__res = None
         self.__time = None
+        self.__start = None
         if not config[0].has_section(url):
             config[0].add_section(url)
             self.__new = True
@@ -73,6 +74,9 @@ class Site(object):
         except (ValueError, configparser.NoOptionError):
             self.__last_change = int(time.time())
             self.set_config(url, "time", self.__last_change)
+
+    def __cmp__(self, other):
+        return cmp(self.__time, other.__time)
 
     def set_config(self, section, key, val):
         if sys.hexversion < 0x03000000:
@@ -100,6 +104,9 @@ class Site(object):
     def get_time_spent(self):
         return self.__time
 
+    def get_time_since_start(self):
+        return (time.time() - self.__start)
+
     def get_new(self):
         return self.__new
 
@@ -111,14 +118,17 @@ class Site(object):
             self.check_alive()
         return self.__res
 
+    def has_started(self):
+        return self.__start is not None
+
     def check_alive(self):
-        start = time.time()
+        self.__start = time.time()
         wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=40", "--tries=3", "--spider",
                      self.get_url()]
         self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
         wget = subprocess.Popen(args=wget_args)
         self.__res = wget.wait()
-        self.__time = (time.time() - start)
+        self.__time = self.get_time_since_start()
 
     def activate_triggers(self, down=False):
         """When site switch state it can have some triggers that should be activated"""
@@ -239,8 +249,9 @@ class Alive(object):
         parser.add_option("-k", "--test-known", dest="KNOWN", action="store_true",
                           help="Test all existing URLs in the cfg file.")
         parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
+        parser.add_option("-s", "--strict", dest="STRICT", action="store_true",
+                          help="Strict ordering. Output can be slightly slower but guarantees that the site with shortest response time is printed first.")
         return parser
-
 
     def write(self, text, color=Color.CYAN):
         """Writes the string only if not in quiet mode"""
@@ -273,6 +284,27 @@ class Alive(object):
             sys.stderr.write(Color.RESET)
         sys.stderr.flush()
 
+    def wait_for_all_to_start(self, sites):
+        """Wait for all checks to start (for strict ordering)"""
+        while True:
+            if not all([s.has_started() for s in sites]):
+                time.sleep(0.1)
+            else:
+                break
+
+    def wait_for_later_sites(self, site, sites):
+        """Makes sure we allow time for the last started to check
+        to get a chance to finish before the currently fastest check
+        to ensure strict ordering"""
+        tsp = site.get_time_spent()
+        last = min(sites, key=lambda s: s.get_time_since_start())
+        to_wait = tsp - last.get_time_since_start()
+        if to_wait > 0:
+            time.sleep(to_wait)
+            SiteThread.results_queue.put(site)
+            return SiteThread.results_queue.get()
+        return site
+
     def check_urls(self, config, urls):
         """Will go through the url list and check if they are up"""
 
@@ -292,11 +324,16 @@ class Alive(object):
             threads.append(thread)
             thread.start()
 
-        tc = len(threads)
-        for i in range(tc):
+        if self.options.STRICT:
+            self.wait_for_all_to_start(sites)
+
+        tlen = len(threads)
+        for i in range(tlen):
             site = SiteThread.results_queue.get()
+            if self.options.STRICT:
+                site = self.wait_for_later_sites(site, sites)
             res = site.get_res()
-            self.write(("[{0:0%dd}/{1}] {2}: " % len(str(tc))).format(i + 1, tc, site.get_url()))
+            self.write(("[{0:0%dd}/{1}] {2}: " % len(str(tlen))).format(i + 1, tlen, site.get_url()))
             if res and res != 6:
                 self.report(site, True, state_pos)
             else:
