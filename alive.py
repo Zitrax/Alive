@@ -237,7 +237,7 @@ class Alive(object):
                           help=("URL(s) to try to retrieve. You can write several URLs separated "
                                 "by space, but remember to quote the string."))
         parser.add_option("-q", "--quiet", action="store_true", dest="QUIET", help="Avoid all non warning prints")
-        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=True,
+        parser.add_option("-n", "--nocolor", action="store_false", dest="COLOR", default=False,
                           help="Don't output colored text")
         parser.add_option("-d", "--debug", action="store_true", dest="DEBUG", help="Print debug messages")
         parser.add_option("-f", "--from", dest="FROM", help="from email address")
@@ -277,10 +277,10 @@ class Alive(object):
 
     def write_warn(self, text, color=Color.YELLOW):
         """Writes a string prefixed by Warning: to stderr"""
-        if self.options.COLOR and color:
+        if self.options and self.options.COLOR and color:
             sys.stderr.write(color)
         sys.stderr.write("Warning: %s" % text)
-        if self.options.COLOR and color:
+        if self.options and self.options.COLOR and color:
             sys.stderr.write(Color.RESET)
         sys.stderr.flush()
 
