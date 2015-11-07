@@ -53,8 +53,26 @@ class TestAlive(unittest.TestCase):
         else:
             self.assertTrue(config.getboolean(url, "Down"))
 
+    def touch(self, fn):
+        if sys.platform == "win32":
+            return "type NUL > {}".format(fn)
+        else:
+            return "touch {}".format(fn)
+
+    def cmd_sep(self):
+        if sys.platform == "win32":
+            return "&"
+        else:
+            return ";"
+
     def test_google(self):
         self.url_test("www.google.no", True)
+
+    def test_google_https(self):
+        self.url_test("https://www.google.no/", True)
+
+    def test_https_down(self):
+        self.url_test("https://www.oiwafjnapweoijfapwoie.no/", False)
 
     def test_down(self):
         self.url_test("www.ifnvernieunviereev.com", False)
@@ -108,8 +126,7 @@ class TestAlive(unittest.TestCase):
         site.set_down(True)
         config = site.get_config()
         # Now add a trigger
-        #config[0].set(url, "up_trigger", "touch %s" % trigger_file)
-        config[0].set(url, "up_trigger", "type NUL > %s" % trigger_file)
+        config[0].set(url, "up_trigger", self.touch(trigger_file))
         self.alive.write_config(config[0])
         self.url_test(url, True)
         # Check if trigger file was created
@@ -127,8 +144,10 @@ class TestAlive(unittest.TestCase):
         site.set_down(True)
         config = site.get_config()
         # Now add a trigger
-        #config[0].set(url, "up_trigger", "ls|wc > %s" % trigger_file)
-        config[0].set(url, "up_trigger", "dir > %s" % trigger_file)
+        if sys.platform == "win32":
+            config[0].set(url, "up_trigger", "dir > %s" % trigger_file)
+        else:
+            config[0].set(url, "up_trigger", "ls|wc > %s" % trigger_file)
         self.alive.write_config(config[0])
         self.url_test(url, True)
         # Check if trigger file was created
@@ -146,8 +165,7 @@ class TestAlive(unittest.TestCase):
         site.set_down(False)
         config = site.get_config()
         # Now add a trigger
-        #config[0].set(url, "down_trigger", "touch %s" % trigger_file)
-        config[0].set(url, "down_trigger", "type NUL > %s" % trigger_file)
+        config[0].set(url, "down_trigger", self.touch(trigger_file))
         self.alive.write_config(config[0])
         self.url_test(url, False)
         # Check if trigger file was created
@@ -168,8 +186,9 @@ class TestAlive(unittest.TestCase):
         site.set_down(False)
         config = site.get_config()
         # Now add a trigger
-        #config[0].set(url, "down_trigger", "touch %s; touch %s" % (trigger_file, trigger_file_2))
-        config[0].set(url, "down_trigger", "type NUL > %s & type NUL > %s" % (trigger_file, trigger_file_2))
+        config[0].set(url, "down_trigger", "%s %s %s" % (self.touch(trigger_file),
+                                                         self.cmd_sep(),
+                                                         self.touch(trigger_file_2)))
         self.alive.write_config(config[0])
         self.url_test(url, False)
         # Check if trigger file was created

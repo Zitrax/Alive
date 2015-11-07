@@ -4,7 +4,6 @@ This script takes as input a URL and checks with wget if it can be accessed,
 with mail notifications when the site goes up or down.
 """
 
-from optparse import OptionParser
 import datetime
 import os
 import re
@@ -13,18 +12,29 @@ import subprocess
 import sys
 import threading
 import time
+from optparse import OptionParser
+
+import requests
+import requests.adapters
 
 # Python 2 and 3 support
 try:
     import queue
 except ImportError:
+    # noinspection PyUnresolvedReferences,PyPep8Naming
     import Queue as queue
 
 try:
     import configparser
 except ImportError:
+    # noinspection PyUnresolvedReferences,PyPep8Naming
     import ConfigParser as configparser
 
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    # noinspection PyUnresolvedReferences
+    from urlparse import urlparse
 
 import smtplib
 from email.mime.text import MIMEText
@@ -75,8 +85,14 @@ class Site(object):
             self.__last_change = int(time.time())
             self.set_config(url, "time", self.__last_change)
 
-    def __cmp__(self, other):
-        return cmp(self.__time, other.__time)
+        # Make sure we retry a few times
+        self.__session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        self.__session.mount('https://', adapter)
+        self.__session.mount('http://', adapter)
+
+    def __lt__(self, other):
+        return self.__time < other.__time
 
     def set_config(self, section, key, val):
         if sys.hexversion < 0x03000000:
@@ -105,7 +121,7 @@ class Site(object):
         return self.__time
 
     def get_time_since_start(self):
-        return (time.time() - self.__start)
+        return time.time() - self.__start
 
     def get_new(self):
         return self.__new
@@ -123,15 +139,25 @@ class Site(object):
 
     def check_alive(self):
         self.__start = time.time()
-        wget_args = ["wget", "--no-check-certificate", "--quiet", "--timeout=40", "--tries=3", "--spider",
-                     self.get_url()]
-        self.__alive.write_debug("Checking using cmd: '" + ' '.join(wget_args) + "'\n")
-        wget = subprocess.Popen(args=wget_args)
-        self.__res = wget.wait()
+
+        if urlparse(self.get_url()).scheme == '':
+            url = 'http://' + self.get_url()
+        else:
+            url = self.get_url()
+
+        self.__alive.write_debug("Checking " + url)
+
+        try:
+            self.__res = 0 if self.__session.head(url).status_code == 200 else 1
+        except requests.RequestException:
+            self.__res = 1
+
         self.__time = self.get_time_since_start()
 
     def activate_triggers(self, down=False):
-        """When site switch state it can have some triggers that should be activated"""
+        """When site switch state it can have some triggers that should be activated
+        :param down: If True triggers when site goes down
+        """
         command = ""
         if down and self.__config[0].has_option(self.__url, "down_trigger"):
             command = self.__config[0].get(self.__url, "down_trigger")
@@ -170,7 +196,9 @@ class Alive(object):
         self.options = None
 
     def permission_check(self, file_name):
-        """Check permissions"""
+        """Check permissions
+        :param file_name: file to check permission for
+        """
 
         if not os.path.exists(file_name):
             return
@@ -232,7 +260,8 @@ class Alive(object):
 
         return True
 
-    def add_options(self, parser):
+    @staticmethod
+    def add_options(parser):
         parser.add_option("-u", "--url", dest="URL",
                           help=("URL(s) to try to retrieve. You can write several URLs separated "
                                 "by space, but remember to quote the string."))
@@ -250,11 +279,15 @@ class Alive(object):
                           help="Test all existing URLs in the cfg file.")
         parser.add_option("-l", "--list", dest="LIST", action="store_true", help="List known URLs in the config file.")
         parser.add_option("-s", "--strict", dest="STRICT", action="store_true",
-                          help="Strict ordering. Output can be slightly slower but guarantees that the site with shortest response time is printed first.")
+                          help="Strict ordering. Output can be slightly slower but guarantees that"
+                               " the site with shortest response time is printed first.")
         return parser
 
     def write(self, text, color=Color.CYAN):
-        """Writes the string only if not in quiet mode"""
+        """Writes the string only if not in quiet mode
+        :param text: Text to write
+        :param color: Color to use if color is enabled
+        """
         if self.options.COLOR and color:
             sys.stdout.write(color)
         if not self.options.QUIET:
@@ -264,7 +297,10 @@ class Alive(object):
         sys.stdout.flush()
 
     def write_debug(self, text, color=None):
-        """Writes a string prefixed by Debug: only if in debug mode"""
+        """Writes a string prefixed by Debug: only if in debug mode
+        :param text: Text to write
+        :param color: Color to use if color is enabled
+        """
         if not self.options.DEBUG:
             return
         if self.options.COLOR and color:
@@ -276,7 +312,10 @@ class Alive(object):
         sys.stdout.flush()
 
     def write_warn(self, text, color=Color.YELLOW):
-        """Writes a string prefixed by Warning: to stderr"""
+        """Writes a string prefixed by Warning: to stderr
+        :param text: Text to write
+        :param color: Color to use if color is enabled
+        """
         if self.options and self.options.COLOR and color:
             sys.stderr.write(color)
         sys.stderr.write("Warning: %s" % text)
@@ -284,18 +323,23 @@ class Alive(object):
             sys.stderr.write(Color.RESET)
         sys.stderr.flush()
 
-    def wait_for_all_to_start(self, sites):
-        """Wait for all checks to start (for strict ordering)"""
+    @staticmethod
+    def wait_for_all_to_start(sites):
+        """Wait for all checks to start (for strict ordering)
+        :param sites: list of all sites
+        """
         while True:
             if not all([s.has_started() for s in sites]):
                 time.sleep(0.1)
             else:
                 break
 
-    def wait_for_later_sites(self, site, sites):
+    @staticmethod
+    def wait_for_later_sites(site, sites):
         """Makes sure we allow time for the last started to check
         to get a chance to finish before the currently fastest check
-        to ensure strict ordering"""
+        to ensure strict ordering
+        """
         tsp = site.get_time_spent()
         last = min(sites, key=lambda s: s.get_time_since_start())
         to_wait = tsp - last.get_time_since_start()
